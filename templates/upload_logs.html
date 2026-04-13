@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCC Process Logs</title>
+    <script src="{{url_for('static',filename='tailwind.js')}}"></script>
+    <link rel="icon" href="/static/torrent.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            /* Slate 950 */
+            color: #f1f5f9;
+        }
+
+        .log-line {
+            border-left: 2px solid #1e293b;
+            padding-left: 1rem;
+            position: relative;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .log-line:hover {
+            border-left-color: #3b82f6;
+            background: #0f172a;
+        }
+
+        .log-line::before {
+            content: '';
+            position: absolute;
+            left: -5px;
+            top: 10px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #334155;
+        }
+
+        .json-container {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+
+        /* Dark Theme Status Colors */
+        .status-success {
+            background-color: rgba(22, 163, 74, 0.2);
+            color: #4ade80;
+            border: 1px solid rgba(74, 222, 128, 0.2);
+        }
+
+        .status-error {
+            background-color: rgba(220, 38, 38, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(248, 113, 113, 0.2);
+        }
+
+        /* Drawer animation */
+        #logDrawer {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateX(100%);
+        }
+
+        #logDrawer.open {
+            transform: translateX(0);
+        }
+
+        .overlay {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Glassmorphism for cards */
+        .glass-card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <header
+            class="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-800 pb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+                    <img src="/static/torrent.ico" style="width: 60px;padding-right: 0px;">
+                    DCC Manual Process Logs
+                </h1>
+                <p class="text-slate-400 mt-2">Real-time monitoring of SAP document ingestion and AI extraction.</p>
+            </div>
+            <div class="flex gap-4">
+                <div
+                    class="bg-slate-900 border border-slate-800 rounded-xl px-5 py-3 shadow-lg text-center min-w-[100px]">
+                    <span class="block text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Total</span>
+                    <span class="text-2xl font-bold text-slate-200" id="statTotal">0</span>
+                </div>
+                <div
+                    class="bg-slate-900 border border-green-900/30 rounded-xl px-5 py-3 shadow-lg text-center min-w-[100px]">
+                    <span
+                        class="block text-[10px] text-green-500 uppercase font-bold tracking-widest mb-1">Success</span>
+                    <span class="text-2xl font-bold text-green-400" id="statSuccess">0</span>
+                </div>
+                <div
+                    class="bg-slate-900 border border-red-900/30 rounded-xl px-5 py-3 shadow-lg text-center min-w-[100px]">
+                    <span class="block text-[10px] text-red-500 uppercase font-bold tracking-widest mb-1">Failed</span>
+                    <span class="text-2xl font-bold text-red-400" id="statFailed">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Grid -->
+        <div id="cardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Cards will be injected here -->
+        </div>
+    </div>
+
+    <!-- Log Drawer / Modal Overlay -->
+    <div id="overlay" class="overlay fixed inset-0 bg-black/60 backdrop-blur-md z-40" onclick="closeDrawer()"></div>
+
+    <!-- Side Drawer -->
+    <div id="logDrawer"
+        class="fixed top-0 right-0 h-full w-full md:w-[650px] bg-slate-900 shadow-2xl z-50 flex flex-col border-l border-slate-800">
+        <div class="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+            <div>
+                <h2 class="text-xl font-bold text-white">Process Detailed View</h2>
+                <p class="text-xs text-slate-500 mt-1 uppercase tracking-wider" id="drawerSubtitle"></p>
+            </div>
+            <button onclick="closeDrawer()" class="p-2 hover:bg-slate-800 rounded-lg transition-colors group">
+                <i class="fa-solid fa-xmark text-xl text-slate-500 group-hover:text-white"></i>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6 custom-scrollbar bg-slate-950">
+            <!-- Error Banner -->
+            <div id="drawerError" class="hidden mb-6 p-4 rounded-xl bg-red-950/30 border border-red-900/50 flex gap-4">
+                <div class="flex-shrink-0 w-10 h-10 rounded-full bg-red-900/20 flex items-center justify-center">
+                    <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-red-400 uppercase text-xs tracking-wider mb-1">SAP Error Details</h4>
+                    <p class="text-red-200/80 font-medium text-sm leading-relaxed" id="errorMessageText"></p>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex gap-8 border-b border-slate-800 mb-6">
+                <button onclick="switchTab('logs')" id="tabBtnLogs"
+                    class="pb-3 px-1 border-b-2 border-blue-500 text-blue-400 font-semibold text-sm transition-all">
+                    <i class="fa-solid fa-list-ul mr-2"></i>Execution Steps
+                </button>
+                <button onclick="switchTab('json')" id="tabBtnJson"
+                    class="pb-3 px-1 border-b-2 border-transparent text-slate-500 font-semibold text-sm hover:text-slate-300 transition-all">
+                    <i class="fa-solid fa-code mr-2"></i>Raw Data Object
+                </button>
+            </div>
+
+            <!-- Tab: Logs -->
+            <div id="tabContentLogs" class="space-y-1">
+                <div id="logList"></div>
+            </div>
+
+            <!-- Tab: JSON -->
+            <div id="tabContentJson" class="hidden">
+                <div
+                    class="bg-black/40 rounded-xl p-6 border border-slate-800 text-blue-300/90 json-container overflow-x-auto shadow-inner">
+                    <pre id="jsonViewer" class="whitespace-pre-wrap"></pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-5 border-t border-slate-800 bg-slate-900 flex justify-between items-center">
+            <button onclick="closeDrawer()"
+                class="px-8 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-all shadow-lg shadow-blue-900/20">
+                Dismiss
+            </button>
+        </div>
+    </div>
+
+    <script>
+
+        const data = {{ LOGS | tojson | safe }};
+
+        function renderDashboard() {
+            const container = document.getElementById('cardsContainer');
+            let successCount = 0;
+            let failedCount = 0;
+
+            container.innerHTML = [...data].reverse().map((item, index) => {
+                if (item.status) successCount++; else failedCount++;
+
+                const statusClass = item.status ? 'status-success' : 'status-error';
+                const statusLabel = item.status ? 'Success' : 'Failed';
+                const statusIcon = item.status ? 'fa-circle-check' : 'fa-circle-xmark';
+
+                return `
+                    <div class="glass-card rounded-2xl p-1 transition-all hover:scale-[1.02] duration-300">
+                        <div class="bg-slate-900/40 rounded-xl p-5 border border-slate-700/50 h-full flex flex-col">
+                            <div class="flex justify-between items-center mb-5">
+                                <span class="text-[15px] font-bold text-slate-200 uppercase tracking-widest bg-slate-800/50 px-2 py-1 rounded">#${item.no || 'N/A'}</span>
+                                <span class="px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-2 ${statusClass}">
+                                    <i class="fa-solid ${statusIcon}"></i> ${statusLabel}
+                                </span>
+                            </div>
+                           
+                            <h3 class="font-bold text-slate-400 truncate mb-2 text-s" title="${item.PDF_FileName}">
+                                ${item.PDF_FileName}
+                            </h3>
+                           
+                            <div class="flex-grow">
+                                ${!item.status ? `
+                                    <div class="text-xs text-red-400/80 bg-red-400/5 p-2 rounded-lg border border-red-400/10 mb-4">
+                                        <i class="fa-solid fa-circle-exclamation mr-1"></i> ${item.error}
+                                    </div>
+                                ` : `
+                                    <p class="text-xs text-slate-500 mb-4">Process Finished Successfully and Validated by SAP.</p>
+                                `}
+                            </div>
+                           
+                            <div class="pt-4 border-t border-slate-800/80 flex items-center justify-between">
+                                ${item.logs ? `
+                                    <span class="text-[12px] text-slate-300 uppercase tracking-tighter">${item.Date} - ${item.Time}</span>
+                                    <button onclick="openDrawer(${index})" class="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-2 group transition-colors">
+                                        DETAILS <i class="fa-solid fa-chevron-right text-[10px] transition-transform group-hover:translate-x-1"></i>
+                                    </button>
+                                ` : `
+                                    <span class="text-[12px] text-slate-300 uppercase tracking-tighter">${item.Date} - ${item.Time}</span>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('statTotal').innerText = data.length;
+            document.getElementById('statSuccess').innerText = successCount;
+            document.getElementById('statFailed').innerText = failedCount;
+        }
+
+        function openDrawer(index) {
+            const item = data[index];
+            const drawer = document.getElementById('logDrawer');
+            const overlay = document.getElementById('overlay');
+
+            document.getElementById('drawerSubtitle').innerText = `${item.PDF_FileName}`;
+
+            // Error handling
+            const drawerError = document.getElementById('drawerError');
+            if (item.error) {
+                drawerError.classList.remove('hidden');
+                document.getElementById('errorMessageText').innerText = item.error;
+            } else {
+                drawerError.classList.add('hidden');
+            }
+
+            // Populate Logs
+            const logList = document.getElementById('logList');
+            logList.innerHTML = (item.logs || []).map(log => {
+                let colorClass = 'text-slate-400';
+                if (log.includes('Success')) colorClass = 'text-green-400 font-semibold';
+                if (log.includes('Calling')) colorClass = 'text-blue-400';
+                if (log.includes('Found')) colorClass = 'text-purple-400';
+                if (log.includes('JSON')) colorClass = 'text-amber-400';
+
+                return `<div class="log-line text-xs py-1 ${colorClass}">${log}</div>`;
+            }).join('');
+
+            // Populate JSON
+            document.getElementById('jsonViewer').innerText = JSON.stringify(item.json, null, 4);
+
+            overlay.classList.add('active');
+            drawer.classList.add('open');
+            switchTab('logs');
+        }
+
+        function closeDrawer() {
+            document.getElementById('logDrawer').classList.remove('open');
+            document.getElementById('overlay').classList.remove('active');
+        }
+
+        function switchTab(tab) {
+            const tabLogs = document.getElementById('tabContentLogs');
+            const tabJson = document.getElementById('tabContentJson');
+            const btnLogs = document.getElementById('tabBtnLogs');
+            const btnJson = document.getElementById('tabBtnJson');
+
+            if (tab === 'logs') {
+                tabLogs.classList.remove('hidden');
+                tabJson.classList.add('hidden');
+                btnLogs.className = "pb-3 px-1 border-b-2 border-blue-500 text-blue-400 font-semibold text-sm transition-all";
+                btnJson.className = "pb-3 px-1 border-b-2 border-transparent text-slate-500 font-semibold text-sm hover:text-slate-300 transition-all";
+            } else {
+                tabLogs.classList.add('hidden');
+                tabJson.classList.remove('hidden');
+                btnLogs.className = "pb-3 px-1 border-b-2 border-transparent text-slate-500 font-semibold text-sm hover:text-slate-300 transition-all";
+                btnJson.className = "pb-3 px-1 border-b-2 border-blue-500 text-blue-400 font-semibold text-sm transition-all";
+            }
+        }
+
+        window.onload = renderDashboard;
+    </script>
+</body>
+
+</html>

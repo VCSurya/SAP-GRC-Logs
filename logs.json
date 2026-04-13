@@ -1,0 +1,57 @@
+[
+    {
+        "ID": "WDF8",
+        "SUBJECT": "EAM Audit review required for Abhijit Jagam using FF_ITTECH on S4P_PROD",
+        "STATUS": "Decision pending",
+        "CREATEDON": "20250531",
+        "DUEDATE": "",
+        "CREATEDBY": "BATCH_GRC",
+        "URL": "https://tgps4hqaapp.torrentgas.com:8220/sap/bc/webdynpro/sap/grac_ui_spm_audit_wf?APPLID=GRFN_INBOX&ENTITY_ID=FFLOG&MODE=E&OBJECT_ID=FFLOG%2f0A85A43DECE61FE08FC1CD8DC43E4394&POWL_QUERY=005056AD19271EDCAEAB2246D7958606&REQNO=&VARIANT=DEFAULT&WI_GROUP_OWNE=200142&WORKITEM_ID=000001387364&sap-client=333&sap-language=EN#",
+        "OBJECTID": "0A85A43DECE61FE08FC1CD8DC43E4394",
+        "WORKITEMID": "000001387364"
+    },
+    {
+        "ID": "WD0105",
+        "SUBJECT": "EAM Audit review required for Harshal Modi using FF_IT2 on S4P_PROD",
+        "STATUS": "Decision pending",
+        "CREATEDON": "20250701",
+        "DUEDATE": "",
+        "CREATEDBY": "BATCH_GRC",
+        "URL": "https://tgps4hqaapp.torrentgas.com:8220/sap/bc/webdynpro/sap/grac_ui_spm_audit_wf?APPLID=GRFN_INBOX&ENTITY_ID=FFLOG&MODE=E&OBJECT_ID=FFLOG%2f0A815CEC1CFB1FE095D0765E3D5BF2F2&POWL_QUERY=005056AD19271EDCAEAB2246D7958606&REQNO=&VARIANT=DEFAULT&WI_GROUP_OWNE=200142&WORKITEM_ID=000001392122&sap-client=333&sap-language=EN#",
+        "OBJECTID": "0A815CEC1CFB1FE095D0765E3D5BF2F2",
+        "WORKITEMID": "000001392122"
+    },
+    {
+        "ID": "WD0112",
+        "SUBJECT": "EAM Audit review required for Harshal Modi using FF_IT2 on S4P_PROD",
+        "STATUS": "Decision pending",
+        "CREATEDON": "20250702",
+        "DUEDATE": "",
+        "CREATEDBY": "BATCH_GRC",
+        "URL": "https://tgps4hqaapp.torrentgas.com:8220/sap/bc/webdynpro/sap/grac_ui_spm_audit_wf?APPLID=GRFN_INBOX&ENTITY_ID=FFLOG&MODE=E&OBJECT_ID=FFLOG%2f0A6F6B5050371FE095E99BD7A510E230&POWL_QUERY=005056AD19271EDCAEAB2246D7958606&REQNO=&VARIANT=DEFAULT&WI_GROUP_OWNE=200142&WORKITEM_ID=000001392132&sap-client=333&sap-language=EN#",
+        "OBJECTID": "0A6F6B5050371FE095E99BD7A510E230",
+        "WORKITEMID": "000001392132"
+    },
+    {
+        "ID": "WD011F",
+        "SUBJECT": "EAM Audit review required for Harshal Modi using FF_IT2 on S4P_PROD",
+        "STATUS": "Decision pending",
+        "CREATEDON": "20250701",
+        "DUEDATE": "",
+        "CREATEDBY": "BATCH_GRC",
+        "URL": "https://tgps4hqaapp.torrentgas.com:8220/sap/bc/webdynpro/sap/grac_ui_spm_audit_wf?APPLID=GRFN_INBOX&ENTITY_ID=FFLOG&MODE=E&OBJECT_ID=FFLOG%2f0A6F6B5050371FE095CB397EC690422F&POWL_QUERY=005056AD19271EDCAEAB2246D7958606&REQNO=&VARIANT=DEFAULT&WI_GROUP_OWNE=200142&WORKITEM_ID=000001393087&sap-client=333&sap-language=EN#",
+        "OBJECTID": "0A6F6B5050371FE095CB397EC690422F",
+        "WORKITEMID": "000001393087"
+    },
+    {
+        "ID": "WD012C",
+        "SUBJECT": "EAM Audit review required for Harshal Modi using FF_IT2 on S4P_PROD",
+        "STATUS": "Decision pending",
+        "CREATEDON": "20250701",
+        "DUEDATE": "",
+        "CREATEDBY": "BATCH_GRC",
+        "URL": "https://tgps4hqaapp.torrentgas.com:8220/sap/bc/webdynpro/sap/grac_ui_spm_audit_wf?APPLID=GRFN_INBOX&ENTITY_ID=FFLOG&MODE=E&OBJECT_ID=FFLOG%2f0A6F6B5050371FE095CD51DF4290C22F&POWL_QUERY=005056AD19271EDCAEAB2246D7958606&REQNO=&VARIANT=DEFAULT&WI_GROUP_OWNE=200142&WORKITEM_ID=000001393092&sap-client=333&sap-language=EN#",
+        "OBJECTID": "0A6F6B5050371FE095CD51DF4290C22F",
+        "WORKITEMID": "000001393092"
+    }
+]

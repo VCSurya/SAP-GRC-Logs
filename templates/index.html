@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GRC FFID</title>
+    <!-- Load Tailwind CSS -->
+    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
+    <script src="{{url_for('static',filename='tailwind.js')}}"></script>
+
+    <link rel="icon" href="/static/torrent.ico">
+
+    <!-- Load Inter font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=100..900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-primary: #1e40af;
+            /* Tailwind Blue 700 */
+            --color-success: #059669;
+            /* Tailwind Emerald 600 */
+            --color-danger: #dc2626;
+            /* Tailwind Red 600 */
+            --color-background: #f8fafc;
+            /* Slate 50 */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-background);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        /* Custom scrollbar for logs */
+        .log-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .log-container::-webkit-scrollbar-thumb {
+            background-color: var(--color-primary);
+            border-radius: 3px;
+        }
+
+        .log-container::-webkit-scrollbar-track {
+            background-color: #1f2937;
+            /* Dark background */
+        }
+
+        /* Custom switch styling */
+        .toggle-checkbox:checked+.toggle-label {
+            background-color: var(--color-success);
+        }
+
+        /* FIX: Target the actual span handle inside the label */
+        .toggle-checkbox:checked+.toggle-label>span {
+            transform: translateX(1.5rem);
+        }
+
+        /* END FIX */
+
+        /* Smooth button transitions */
+        .btn-base {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-base:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-base:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Modal backdrop transition */
+        .modal-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .modal-active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Fullscreen overlay */
+
+        #page-loader {
+
+            position: fixed;
+
+            top: 0;
+
+            left: 0;
+
+            width: 100%;
+
+            height: 100%;
+
+            background: rgba(20, 20, 20, 0.85);
+
+            display: none;
+            /* hidden by default */
+
+            justify-content: center;
+
+            align-items: center;
+
+            z-index: 9999;
+
+        }
+
+        /* Loader content container */
+
+        .loader-content {
+
+            text-align: center;
+
+            color: #fff;
+
+            font-family: Arial, sans-serif;
+
+        }
+
+        /* Spinner animation */
+
+        .spinner {
+
+            border: 6px solid #f3f3f3;
+
+            border-top: 6px solid #ffcc00;
+
+            border-radius: 50%;
+
+            width: 70px;
+
+            height: 70px;
+
+            animation: spin 1s linear infinite;
+
+            margin: 0 auto 20px;
+
+        }
+
+        @keyframes spin {
+
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+
+        }
+
+        /* Warning text */
+
+        .warning-text {
+
+            font-size: 1.2em;
+
+            font-weight: bold;
+
+        }
+    </style>
+    <style>
+        /* Neon glow effect */
+        .neon-text {
+            text-shadow:
+                0 0 5px #00eaff,
+                0 0 10px #00eaff,
+                0 0 20px #00eaff,
+                0 0 40px #0077ff;
+        }
+
+        /* Custom keyframes for the rotating ring */
+        @keyframes spinGlow {
+            0% {
+                transform: rotate(0deg);
+                box-shadow: 0 0 20px #00eaff;
+            }
+
+            50% {
+                box-shadow: 0 0 40px #00bfff;
+            }
+
+            100% {
+                transform: rotate(360deg);
+                box-shadow: 0 0 20px #00eaff;
+            }
+        }
+
+        .animate-spin-glow {
+            animation: spinGlow 2s linear infinite;
+        }
+    </style>
+    <style>
+        .refresh-btn {
+            /* Layout & sizing */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+
+            /* Icon appearance */
+            color: #2a006e;
+            font-size: 2em;
+            /* your requested size */
+            line-height: 1;
+            font-weight: 700;
+
+            /* Visual design */
+            background: radial-gradient(120% 120% at 30% 30%, #ffffff 0%, #f2f4ff 60%, #e6eaff 100%);
+            border: 1px solid rgba(42, 0, 110, 0.15);
+
+            /* Interaction */
+            cursor: pointer;
+        }
+
+        /* Hover effects ONLY on the button (no rotation here) */
+        .refresh-btn:hover {
+            color: #1b0050;
+        }
+
+        /* Press effect */
+        .refresh-btn:active {
+            transform: translateY(0) scale(0.98);
+            box-shadow:
+                0 4px 12px rgba(42, 0, 110, 0.18),
+                inset 0 2px 6px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Focus ring */
+        .refresh-btn:focus-visible {
+            outline: none;
+            box-shadow:
+                0 0 0 3px rgba(42, 0, 110, 0.25),
+                0 10px 22px rgba(42, 0, 110, 0.22);
+        }
+
+        /* The icon element we rotate */
+        .refresh-btn .icon {
+            display: inline-block;
+            /* enables transform */
+            will-change: transform;
+        }
+
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .icon.spin-animation {
+            animation: spin 900ms ease-out 1;
+        }
+    </style>
+    <style>
+        /* Custom styles for the modal overlay and flexible component */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+        }
+
+        .date-time-display {
+            /* Aligns numbers well, especially for date/time strings */
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Custom pulsing effect for the "Start" state */
+        @keyframes pulse-green {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(26, 102, 74, 0.7);
+            }
+
+            50% {
+                box-shadow: 0 0 0 10px rgba(52, 211, 153, 0);
+            }
+        }
+
+        .animate-pulse-green {
+            animation: pulse-green 2s infinite;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 p-4">
+
+    <!-- Main Dashboard Container -->
+    <div id="app"
+        class="max-w-5xl w-full bg-white rounded-xl shadow-2xl p-6 md:p-8 border border-blue-100 transition duration-500">
+
+        <!-- Header: AI Theme -->
+        <header class="mb-8 flex pb-4 border-blue-200 justify-between items-center"
+            style="border-bottom: 1px solid #2a006e;">
+            <h1 class="text-4xl font-extrabold text-gray-800 flex items-center">
+                <img src="/static/torrent.ico" style="width: 60px;padding-right: 10px;">
+                GRC FFID Automation Agent
+            </h1>
+
+            <button class="refresh-btn" aria-label="Refresh" title="Refresh" onclick="animateIcon(this)">
+                <span class="icon">↻</span>
+            </button>
+
+        </header>
+
+        <!-- Status and Controls Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+
+            <!-- 1. Bot Status Card -->
+            <div
+                class="lg:col-span-1 bg-white p-6 rounded-lg shadow-lg border-t-4 border-blue-600 transition duration-300 hover:shadow-xl">
+                <h2 class="text-xl font-semibold mb-3 text-gray-700">Agent Status</h2>
+                <div class="flex items-center space-x-3">
+                    <div id="status-dot" class="w-4 h-4 rounded-full transition duration-300"></div>
+                    <p id="status-text" class="text-2xl font-bold">Loading...</p>
+                </div>
+
+                <!-- NEW: Skip Button -->
+                <div class="mt-4">
+                    <button id="skip-button" disabled
+                        class="btn-base bg-yellow-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-yellow-600 active:bg-yellow-700 disabled:bg-gray-400 w-full">
+                        Skip
+                    </button>
+                </div>
+                <div class="mt-4 text-sm text-gray-500">
+                    <p>Next Run: <span id="next-run-time" class="font-medium text-gray-800">N/A</span></p>
+                </div>
+            </div>
+
+            <!-- 2. Scheduling Card -->
+            <div
+                class="lg:col-span-2 bg-white p-4 rounded-lg shadow-lg border-t-4 border-green-600 transition duration-300 hover:shadow-xl">
+
+                <div class="flex justify-between items-center w-full mb-4">
+                    <h2 class="text-xl font-semibold text-gray-700">Agent Scheduling</h2>
+                    <h2 class="text-xs font-semibold text-gray-400">Last Updated: <span
+                            id="last-updated-scheduler"></span></h2>
+                </div>
+
+                <!-- Container for conditional scheduling content -->
+                <div id="scheduling-content">
+                    <form id="schedule-form" class="space-y-4">
+                        <!-- Schedule Switch -->
+                        <div class="flex items-center justify-between">
+                            <label class="text-gray-600 font-medium">Enable Auto-Schedule</label>
+                            <input type="checkbox" id="schedule-toggle" class="hidden toggle-checkbox">
+                            <label for="schedule-toggle"
+                                class="relative block w-14 h-8 bg-gray-300 rounded-full cursor-pointer transition duration-300 toggle-label">
+                                <span
+                                    class="absolute left-1 top-1 w-6 h-6 bg-white rounded-full transition-transform duration-300 shadow-md"></span>
+                            </label>
+                        </div>
+
+                        <!-- Scheduling Inputs -->
+                        <div id="schedule-inputs"
+                            class="grid grid-cols-3 gap-4 transition-all duration-300 ease-in-out">
+                            <div class="col-span-2">
+                                <label for="schedule-value"
+                                    class="block text-sm font-medium text-gray-600 mb-1">Interval Value</label>
+                                <input type="number" id="schedule-value" min="1" value="5" required
+                                    class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                            </div>
+                            <div>
+                                <label for="schedule-unit" class="block text-sm font-medium text-gray-600 mb-1">Time
+                                    Unit</label>
+                                <select id="schedule-unit"
+                                    class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                                    <option value="minutes">Minutes</option>
+                                    <option value="hours">Hours</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="pt-2 items-center justify-center ">
+                            <button type="submit" id="post-schedule-btn"
+                                class="btn-base bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-400 w-full">
+                                Save & Activate Schedule
+                            </button>
+                            <!-- <button type="button" id="stop-bot-btn" disabled
+                                class="btn-base bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 active:bg-red-800 disabled:bg-gray-400">
+                                Stop Bot
+                            </button> -->
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Disabled message when bot is running -->
+                <p id="scheduler-disabled-message" class="text-gray-500 italic p-4 bg-gray-100 rounded-lg hidden">
+                    Scheduling configuration is locked while the bot is **RUNNING**. Stop the bot to make changes.
+                </p>
+            </div>
+        </div>
+
+        <div class="w-full mb-5">
+
+            <button id="toggleButton" class="
+                group
+                w-full
+                px-8 py-4
+                flex items-center justify-center
+                font-extrabold text-xl
+                rounded-full
+                shadow-lg
+                transform transition-all duration-300 ease-in-out
+                focus:outline-none focus:ring-4
+                " onclick="startBot()"
+                
+                style="display: none;">
+
+                <!-- Text container (will be updated by JS) -->
+                <span id="buttonText">Start</span>
+            </button>
+
+        </div>
+
+        <!-- 1. Main Flexible Component Container -->
+        <div id="status-component"
+            class="w-full bg-white p-0 md:p-4 rounded-xl shadow-xl transition-all duration-300 ease-in-out border border-blue-100 mb-8">
+
+            <!-- NEW FLEXIBLE HEADER ROW: Title & Date (Left) | Button (Right) -->
+            <div
+                class="flex flex-col md:flex-row justify-between items-start md:items-center mb-0 space-y-4 md:space-y-0">
+
+                <!-- Left Side Block: Title and Date -->
+                <div class="flex-grow min-w-0 pr-4">
+                    <h1 class="text-l font-bold text-gray-800 flex items-center mb-1">
+                        <svg class="w-6 h-6 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Email Scan Starting Point
+                    </h1>
+                    <!-- Last Processed Date (Moved next to the title) -->
+                    <p id="last-processed-date"
+                        class="date-time-display text-lg font-mono text-blue-500 break-words ml-8 truncate">
+                        <!-- Date will be inserted here -->
+                    </p>
+                </div>
+
+                <!-- Right Side: Action Button -->
+                <button id="update-btn" onclick="openModal()" disabled
+                    class="w-full md:w-auto px-4 py-2 bg-gray-600 text-white font-bold rounded-lg shadow-md hover:bg-gray-700 transition-colors duration-200 focus:outline-none focus:ring-4 focus:ring-gray-300 disabled:opacity-50 flex-shrink-0">
+                    Update
+                </button>
+            </div>
+        </div>
+
+        <!-- Bot Logs -->
+        <div class="mb-8">
+            <!-- <h2 class="text-xl font-semibold mb-4 text-gray-700 px-1">Agent Logs (Real-time Feed)</h2> -->
+
+
+            <div class="flex items-center justify-between mb-4 px-1">
+                <h2 class="text-xl font-semibold text-gray-700">
+                    Agent Logs (Real-time Feed)
+                </h2>
+                <a href="/user-logs" target="_blank" rel="noopener noreferrer"
+                    style="text-decoration: underline;font-weight: 700;color: #1e40af;">View</a>
+            </div>
+            <div
+                class="log-container h-64 overflow-y-auto bg-gray-900 text-green-400 p-4 rounded-lg text-xs shadow-inner">
+                <pre id="bot-logs" class="font-mono">System initializing...</pre>
+            </div>
+        </div>
+
+        <!-- Last Run Details -->
+        <div class="mb-8" style="display: none;">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">Last Execution Details</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div class="detail-item">
+                    <p class="text-xs font-medium text-blue-600 uppercase">Last Run Time</p>
+                    <p id="last-run-time" class="text-gray-800 font-semibold text-lg">N/A</p>
+                </div>
+                <div class="detail-item">
+                    <p class="text-xs font-medium text-blue-600 uppercase">Process ID</p>
+                    <p id="process-id" class="text-gray-800 font-semibold text-lg">N/A</p>
+                </div>
+                <!-- <div class="detail-item">
+                    <p class="text-xs font-medium text-blue-600 uppercase">Duration</p>
+                    <p id="duration" class="text-gray-800 font-semibold text-lg">N/A</p>
+                </div> -->
+            </div>
+        </div>
+
+        <!-- Reset Button -->
+        <div class="border-t pt-6 border-gray-200 flex justify-end gap-10">
+            <button id="reset-button"
+                class="btn-base bg-red-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 active:bg-gray-900 w-full">
+                Reset Factory
+            </button>
+            <button id="log-out-button"
+                class="btn-base bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 active:bg-gray-900 w-full">
+                Log Out
+            </button>
+
+        </div>
+
+    </div>
+
+    <!-- Confirmation Modal (Hidden by default) -->
+    <div id="reset-modal"
+        class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 modal-hidden transition-opacity duration-300">
+        <div class="bg-white rounded-xl p-8 max-w-sm w-full shadow-2xl transform scale-100 transition-transform duration-300"
+            style="transform-origin: center;">
+            <h3 class="text-2xl font-bold text-red-600 mb-4">Confirm Reset</h3>
+            <p class="text-gray-600 mb-6">Are you absolutely sure you want to perform a **Factory Reset**? This action
+                is irreversible and will erase all stored schedules and log data.</p>
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-reset"
+                    class="btn-base bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-medium hover:bg-gray-400">Cancel</button>
+                <button id="confirm-reset"
+                    class="btn-base bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700">Erase
+                    All</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loader Component -->
+    <div id="page-loader">
+        <div class="loader-content">
+            <div class="spinner"></div>
+            <p class="warning-text">⚠️ Please wait...<br>Do not refresh the page until the process completes.</p>
+        </div>
+    </div>
+    
+
+
+    <!-- Full-screen loader overlay -->
+    <div id="factoryLoader"
+        class="fixed inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-95 z-[9999] hidden">
+        <div class="flex flex-col items-center space-y-6">
+            <!-- Spinning loader animation -->
+            <div class="w-20 h-20 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <!-- Text message -->
+            <div class="text-center">
+                <h2 class="text-white text-2xl font-bold mb-2">Resetting your factory...</h2>
+                <p class="text-gray-300 text-sm animate-pulse">Don’t refresh or switch the page</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Update Date/Time Modal (Pop-up) -->
+    <div id="update-modal"
+        class="hidden fixed inset-0 flex items-center justify-center modal-overlay transition-opacity duration-300">
+
+        <!-- Modal Content -->
+        <div
+            class="bg-white p-6 w-full max-w-sm rounded-xl shadow-2xl transform scale-100 transition-transform duration-300">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Set Email Reading Start Point</h2>
+
+            <p class="text-sm text-gray-600 mb-4">Please enter the specific date and time from which the Agent should
+                begin reading your emails. This helps the Agent filter and process only the emails received after your
+                chosen point in time.</p>
+
+            <input type="datetime-local" id="new-datetime"
+                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 mb-6">
+
+            <!-- Modal Actions -->
+            <div class="flex justify-between items-center">
+                <button onclick="closeModal()"
+                    class="px-4 py-2 text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+                    Cancel
+                </button>
+                <button id="save-btn" onclick="postUpdate()"
+                    class="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50">
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+
+        // --- API Configuration ---
+
+        const BASE_URL = "";
+        const API_URL = `${BASE_URL}/logs`;
+        const SCHEDULER_API_URL = `${BASE_URL}/update_scheduler`;
+        const SKIP_API_URL = `${BASE_URL}/skip`;
+        const RESET_API_URL = `${BASE_URL}/reset-bot`;
+        const LAST_READ_EMAIL_URL = `${BASE_URL}/latest-proceed-email`;
+        const START_BOT = `${BASE_URL}/start`;
+        const STOP_BOT = `${BASE_URL}/stop`;
+
+        const POLLING_INTERVAL = 2000; // Poll every 2 seconds
+
+        // --- Utility Functions ---
+
+        /** Generates a time string for logs and run times. */
+        const nowIso = () => new Date().toISOString();
+
+        /** Converts milliseconds to a human-readable duration string. */
+        const formatDuration = (ms) => {
+            if (ms === null) return 'N/A';
+            if (ms < 0) ms = 0; // Prevent negative durations
+
+            const totalSeconds = Math.floor(ms / 1000);
+            const seconds = totalSeconds % 60;
+            const minutes = Math.floor((totalSeconds / 60) % 60);
+            const hours = Math.floor(totalSeconds / 3600);
+
+            const parts = [];
+            if (hours > 0) parts.push(`${hours}h`);
+            if (minutes > 0 || hours > 0) parts.push(`${minutes}m`);
+            parts.push(`${seconds}s`);
+
+            // If duration is less than 1 second, show milliseconds
+            if (totalSeconds === 0 && ms > 0) {
+                return `${Math.floor(ms)}ms`;
+            }
+
+            return parts.join(' ');
+        };
+
+        /** Formats an ISO string (or YYYY-MM-DD HH:MM:SS string) to a local readable time. */
+        const formatTime = (isoString) => {
+            if (!isoString) return 'N/A';
+            try {
+                let dateString = isoString.trim();
+                if (!dateString.includes('Z') && !dateString.includes('+')) {
+                    dateString = dateString.replace(' ', 'T');
+                }
+                return new Date(dateString).toLocaleString();
+            } catch (e) {
+                console.error("Date parsing error:", e);
+                return isoString;
+            }
+        };
+
+        // --- Bot State Management ---
+
+        const INITIAL_BOT_STATE = {
+            isRunning: false,
+            nextRunTime: null,
+            lastRun: {
+                time: null,
+                processId: null,
+                durationMs: null,
+            },
+            logs: [],
+        };
+
+        // botState stores the *API's truth* from /logs
+        let botState = INITIAL_BOT_STATE;
+
+        // localScheduleConfig stores the *current displayed schedule settings* loaded once from /update_scheduler
+        let localScheduleConfig = {
+            scheduleUnit: 'minutes',
+            scheduleValue: 5,
+            scheduleEnabled: false,
+            schedulerTimeDate: 'N/A',
+        };
+
+        // --- DOM Elements ---
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const nextRunTimeEl = document.getElementById('next-run-time');
+        const lastRunTimeEl = document.getElementById('last-run-time');
+        const processIdEl = document.getElementById('process-id');
+        // const durationEl = document.getElementById('duration');
+        const botLogsEl = document.getElementById('bot-logs');
+        // const stopBotBtn = document.getElementById('stop-bot-btn');
+        const postScheduleBtn = document.getElementById('post-schedule-btn');
+        const scheduleForm = document.getElementById('schedule-form');
+        const scheduleToggle = document.getElementById('schedule-toggle');
+        const scheduleValueInput = document.getElementById('schedule-value');
+        const scheduleUnitSelect = document.getElementById('schedule-unit');
+        const lastUpdatedScheduler = document.getElementById('last-updated-scheduler');
+        const scheduleInputsDiv = document.getElementById('schedule-inputs');
+        const resetButton = document.getElementById('reset-button');
+        const logOutButton = document.getElementById('log-out-button');
+        const resetModal = document.getElementById('reset-modal');
+        const cancelResetBtn = document.getElementById('cancel-reset');
+        const confirmResetBtn = document.getElementById('confirm-reset');
+        const skipButton = document.getElementById('skip-button');
+        const schedulingContent = document.getElementById('scheduling-content');
+        const schedulerDisabledMessage = document.getElementById('scheduler-disabled-message');
+
+        const lastProcessedDateEl = document.getElementById('last-processed-date');
+        const updateModal = document.getElementById('update-modal');
+        const newDatetimeInput = document.getElementById('new-datetime');
+        const feedbackBox = document.getElementById('feedback-box');
+        const saveButton = document.getElementById('save-btn');
+        const updateButton = document.getElementById('update-btn');
+
+        const button = document.getElementById('toggleButton');
+        const textSpan = document.getElementById('buttonText');
+
+
+        // --- UI Synchronization ---
+
+        /** Sets the scheduler input fields based on the localScheduleConfig state.
+         * This is only called on initial load, submit, or reset.
+         */
+        const syncSchedulerInputsToConfig = () => {
+            scheduleToggle.checked = localScheduleConfig.scheduleEnabled;
+            scheduleValueInput.value = localScheduleConfig.scheduleValue;
+            scheduleUnitSelect.value = localScheduleConfig.scheduleUnit;
+            lastUpdatedScheduler.textContent = localScheduleConfig.schedulerTimeDate;
+            console.log(localScheduleConfig.schedulerTimeDate)
+        };
+
+
+        // --- API & Data Processing ---
+
+        /** Fetches the scheduler config on initial load (GET to /update_scheduler). */
+        const fetchSchedulerConfig = async () => {
+            try {
+                const response = await fetch(SCHEDULER_API_URL);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                const apiData = await response.json();
+
+                if (apiData.success && apiData.bot_scheduler) {
+                    const scheduler = apiData.bot_scheduler;
+                    localScheduleConfig = {
+                        scheduleUnit: scheduler.duration || 'minutes',
+                        scheduleValue: scheduler.interval_minutes || 5,
+                        scheduleEnabled: scheduler.enable || false,
+                        schedulerTimeDate: formatTime(scheduler.last_updated_scheduler) || 'N/A',
+                    };
+
+                    if (scheduler.enable === true) {
+                        botState.nextRunTime = scheduler?.['Next run time'] || null;
+                    }
+
+                    logEvent('INFO', `Initial schedule loaded from server.`);
+                } else {
+                    logEvent('WARNING', `Scheduler API returned success:false or malformed data.`);
+                }
+            } catch (error) {
+                logEvent('CRITICAL', `Initial Scheduler Fetch Error: ${error.message}. Ensure the endpoint is reachable.`);
+            }
+            // Sync UI only after first load
+            syncSchedulerInputsToConfig();
+            updateUI();
+        };
+
+
+        /** Processes the raw log data from the polling API (/logs) and updates botState.
+         * Crucially, this function no longer touches localScheduleConfig or input values.
+         */
+        const processApiData = (logs) => {
+            // 1. Bot Status (from /logs endpoint)
+            botState.isRunning = logs.bot_status?.run || false;
+
+            // 2. Next Run Time (from /logs endpoint)
+            botState.nextRunTime = logs.bot_status?.['Next run time'] || null;
+
+            // 3. Last Run Details (from /logs endpoint)
+            const lastRunDetails = logs.data?.last_visited_email_detailes;
+            if (lastRunDetails) {
+                botState.lastRun.time = lastRunDetails.process_date_time;
+
+                const statusPidLine = logs.data.status?.find(line => line.includes('Started process PID:'));
+                if (statusPidLine) {
+                    botState.lastRun.processId = statusPidLine.split('PID: ')[1].split(')')[0].trim();
+                } else {
+                    botState.lastRun.processId = lastRunDetails.result?.[0]?.no || 'N/A';
+                }
+
+                const start = logs.bot_status?.start_bot_date_time;
+                const end = lastRunDetails.process_date_time;
+                if (start && end) {
+                    const startTime = new Date(start.replace(' ', 'T')).getTime();
+                    const endTime = new Date(end.replace(' ', 'T')).getTime();
+                    botState.lastRun.durationMs = Math.max(0, endTime - startTime);
+                } else {
+                    botState.lastRun.durationMs = null;
+                }
+
+            } else {
+                botState.lastRun.time = null;
+                botState.lastRun.processId = null;
+                botState.lastRun.durationMs = null;
+            }
+
+
+            // 4. Logs (Combine status logs and last visited email logs)
+            let combinedLogs = [];
+
+            if (logs.data?.status) {
+                logs.data.status.forEach(msg => {
+                    combinedLogs.push({ timestamp: nowIso(), level: 'STATUS', message: msg });
+                });
+            }
+
+            const emailResults = logs.data?.last_visited_email_detailes?.result?.[0]?.logs;
+            if (emailResults) {
+                combinedLogs.push({ timestamp: nowIso(), level: 'INFO', message: '--- Detailed Email Processing Log ---' });
+                emailResults.forEach(msg => {
+                    let level = 'INFO';
+                    if (msg.toLowerCase().includes('error')) level = 'ERROR';
+                    if (msg.toLowerCase().includes('critical')) level = 'CRITICAL';
+                    if (msg.toLowerCase().includes('warning')) level = 'WARNING';
+                    combinedLogs.push({ timestamp: nowIso(), level, message: msg });
+                });
+            }
+
+            botState.logs = combinedLogs.slice(-50);
+        };
+
+        /** Fetches the current bot status from the polling endpoint. */
+        const fetchLogs = async () => {
+            try {
+                const response = await fetch(API_URL);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const apiData = await response.json();
+
+                if (apiData.success && apiData.logs) {
+                    processApiData(apiData.logs);
+                } else {
+                    logEvent('ERROR', `API returned success:false or malformed data.`);
+                }
+
+            } catch (error) {
+                logEvent('CRITICAL', `API Fetch Error: ${error.message}. Is the local server running at ${API_URL}?`);
+                botState.isRunning = false;
+            }
+
+            updateUI();
+        };
+
+        // Start polling
+        let pollingIntervalId;
+        const startPolling = () => {
+            if (pollingIntervalId) clearInterval(pollingIntervalId);
+            fetchLogs(); // Initial load
+            pollingIntervalId = setInterval(fetchLogs, POLLING_INTERVAL);
+            logEvent('INFO', `Polling started every ${POLLING_INTERVAL / 1000} seconds.`);
+        };
+
+
+        // --- API Control Functions ---
+
+        /** Sends new schedule data to the dedicated API endpoint (/update_scheduler POST). */
+        const postSchedule = async (unit, value, enabled) => {
+            const payload = {
+                inputValue: value.toString(),
+                isChecked: enabled,
+                selectedTime: unit
+            };
+
+            logEvent('INFO', `[POST] Sending schedule update: ${JSON.stringify(payload)}`);
+
+            try {
+                const response = await fetch(SCHEDULER_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error(`HTTP POST error! status: ${response.status}`);
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Update local config immediately based on successful submission
+                    localScheduleConfig.scheduleUnit = unit;
+                    localScheduleConfig.scheduleValue = value;
+                    localScheduleConfig.scheduleEnabled = enabled;
+
+                    logEvent('STATUS', `Schedule updated successfully! Server reported: ${JSON.stringify(result)}`);
+                    alert("Schedule updated successfully!")
+                    // Sync the inputs to the newly saved config
+                    syncSchedulerInputsToConfig();
+                    fetchSchedulerConfig();
+
+                    // Immediately trigger a poll to update status and nextRunTime from /logs
+                    fetchLogs();
+                    return { success: true };
+                } else {
+                    logEvent('ERROR', `API POST failed: Server returned success:false.`);
+                    return { success: false };
+                }
+
+            } catch (error) {
+                logEvent('CRITICAL', `API POST Error: ${error.message}. Schedule likely NOT updated.`);
+                return { success: false, error };
+            }
+        };
+
+        /** Simulates stopping the bot process. */
+        const stopBot = async () => {
+            await new Promise(resolve => setTimeout(resolve, 300));
+            logEvent('WARNING', '[Simulated STOP] Bot stop command sent. Waiting for server confirmation.');
+            fetchLogs();
+            return { success: true };
+        };
+
+        /** Simulates skipping the current process. */
+        const skipProcess = async () => {
+            await new Promise(resolve => setTimeout(resolve, 300));
+            logEvent('WARNING', '[Simulated SKIP] Request to skip current process sent. Waiting for server confirmation.');
+            botState.isRunning = false;
+            fetchLogs();
+            return { success: true };
+        };
+
+        /** Simulates factory reset. */
+        const resetFactory = async () => {
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Reset local config to defaults (simulates server reset)
+            localScheduleConfig = {
+                scheduleUnit: 'minutes',
+                scheduleValue: 5,
+                scheduleEnabled: false,
+            };
+            logEvent('CRITICAL', '[Simulated RESET] Factory Reset command sent and local config reset. Waiting for server confirmation.');
+
+            // Trigger a POST to the scheduler endpoint to persist the disabled state
+            const postSuccess = await postSchedule(localScheduleConfig.scheduleUnit, localScheduleConfig.scheduleValue, localScheduleConfig.scheduleEnabled);
+
+            // If post was successful, sync inputs and fetch logs
+            if (postSuccess) {
+                syncSchedulerInputsToConfig();
+                fetchLogs();
+            }
+
+            return { success: true };
+        };
+
+
+        // --- Logging Management ---
+        const logEvent = (level, message) => {
+            if (botState.logs.some(log => log.message.includes(message) && log.level === level)) return;
+
+            const newLog = { timestamp: nowIso(), level, message };
+            botState.logs.push(newLog);
+
+            updateLogsUI();
+        };
+
+        const updateLogsUI = () => {
+            let logsHtml = botState.logs.map(log => {
+                let colorClass = 'text-green-400';
+                if (log.level === 'WARNING') colorClass = 'text-yellow-400';
+                if (log.level === 'ERROR' || log.level === 'CRITICAL') colorClass = 'text-red-400';
+                if (log.level === 'STATUS') colorClass = 'text-blue-400';
+
+                const levelDisplay = log.level.padEnd(9);
+                const messageDisplay = log.message.length > 120 ? log.message.substring(0, 117) + '...' : log.message;
+
+                return `<div class="log-line"><span class="text-gray-500">[+]</span> <span class="${colorClass} font-bold">${levelDisplay}</span>: ${messageDisplay}</div>`;
+            }).join('');
+
+            botLogsEl.innerHTML = logsHtml;
+            botLogsEl.parentElement.scrollTop = botLogsEl.parentElement.scrollHeight;
+        };
+
+
+        // --- UI Update Function (Runs every 2 seconds) ---
+
+        const updateUI = () => {
+            const { isRunning, nextRunTime, lastRun } = botState;
+
+            button.className = 'group w-full px-8 py-2 flex items-center justify-center font-extrabold text-xl rounded-full shadow-lg transform transition-all duration-300 ease-in-out focus:outline-none focus:ring-4';
+            button.classList.remove('animate-pulse-green');
+
+            // 1. Status Display (Updated every 2s)
+            statusText.textContent = isRunning ? 'RUNNING' : 'STOPPED';
+            if (isRunning) {
+                statusDot.className = 'w-4 h-4 rounded-full bg-green-500 shadow-lg shadow-green-500/50 transition duration-300';
+                statusText.classList.remove('text-red-600');
+                statusText.classList.add('text-green-600');
+
+                // --- RUNNING (STOP) STATE ---
+                textSpan.textContent = 'Stop Agent';
+
+                // Red styling for Stop
+                button.classList.add(
+                    'bg-red-500', 'hover:bg-red-600', 'text-white',
+                    'shadow-red-400/50', 'hover:shadow-red-500/80',
+                    'focus:ring-red-300'
+                );
+
+            } else {
+                statusDot.className = 'w-4 h-4 rounded-full bg-red-500 shadow-lg shadow-red-500/50 transition duration-300';
+                statusText.classList.remove('text-green-600');
+                statusText.classList.add('text-red-600');
+
+                textSpan.textContent = 'Start Agent';
+
+                // Green styling for Start
+                button.classList.add(
+                    'bg-gray-800', 'hover:bg-green-600', 'text-white',
+                    'shadow-green-400/50', 'hover:shadow-green-500/80',
+                    'focus:ring-green-300', 'animate-pulse-green' // Add the cool pulsing effect
+                );
+
+            }
+
+            // 2. Next Run Time (Updated every 2s)
+            if (isRunning) {
+                nextRunTimeEl.textContent = 'Active (Wait for completion)';
+                nextRunTimeEl.classList.add('italic');
+            } else if (localScheduleConfig.scheduleEnabled && nextRunTime) {
+                nextRunTimeEl.textContent = formatTime(nextRunTime);
+                nextRunTimeEl.classList.remove('italic');
+            } else {
+                nextRunTimeEl.textContent = 'Disabled or not scheduled';
+                nextRunTimeEl.classList.add('italic');
+            }
+
+            if (localScheduleConfig.scheduleEnabled){
+                button.style.display = 'none';
+                skipButton.disabled = !isRunning;
+            }else{
+                button.style.display = 'block';
+            }
+
+            // 3. Last Run Details (Updated every 2s)
+            lastRunTimeEl.textContent = formatTime(lastRun.time);
+            processIdEl.textContent = lastRun.processId || 'N/A';
+            // durationEl.textContent = formatDuration(lastRun.durationMs);
+
+            // 4. Scheduling Card Visibility and Controls (Updated every 2s)
+            if (isRunning) {
+                schedulingContent.classList.add('hidden');
+                schedulerDisabledMessage.classList.remove('hidden');
+                // stopBotBtn.disabled = false;
+            } else {
+                schedulingContent.classList.remove('hidden');
+                schedulerDisabledMessage.classList.add('hidden');
+                // stopBotBtn.disabled = true;
+
+                // CRITICAL: Disable/Enable inputs based on the toggle state (user's active edit state)
+                const inputsDisabled = !scheduleToggle.checked;
+                scheduleValueInput.disabled = inputsDisabled;
+                scheduleUnitSelect.disabled = inputsDisabled;
+                postScheduleBtn.disabled = inputsDisabled;
+
+                scheduleInputsDiv.style.display = scheduleToggle.checked ? 'grid' : 'none';
+            }
+
+            // 5. Action Buttons (Updated every 2s)
+            
+
+            // 6. Logs (Updated every 2s)
+            updateLogsUI();
+        };
+
+        // --- Event Handlers ---
+
+        const handleScheduleToggle = async () => {
+            // Toggling the checkbox updates the UI state immediately, but does NOT call the API.
+            // The API call is now exclusively handled by handleScheduleSubmit.
+
+
+            if (scheduleToggle.checked === false && localScheduleConfig.scheduleEnabled === true) {
+
+                if (confirm("Are you sure you want to disable the agent?")) {
+                    const value = parseInt(scheduleValueInput.value);
+                    const unit = scheduleUnitSelect.value;
+                    const enabled = scheduleToggle.checked;
+
+                    try {
+                        await postSchedule(unit, value, enabled);
+                    } catch (error) {
+                        logEvent('ERROR', 'Failure to update schedule. Check console for details.');
+                    } finally {
+                        updateUI();
+                    }
+                }
+                else {
+                    scheduleToggle.checked = true;
+                }
+            }
+            // The value of scheduleToggle.checked is automatically handled by the browser.
+
+            // We force a UI update so the inputs and submit button immediately reflect the new toggle state
+            // updateUI();
+        };
+
+        const handleScheduleSubmit = async (e) => {
+            e.preventDefault();
+
+            const value = parseInt(scheduleValueInput.value);
+            const unit = scheduleUnitSelect.value;
+            const enabled = scheduleToggle.checked;
+
+            if (value < 1 || !enabled || botState.isRunning) {
+                if (value < 1) logEvent('WARNING', 'Interval value must be 1 or greater.');
+                return;
+            }
+
+            postScheduleBtn.textContent = 'Saving...';
+            postScheduleBtn.disabled = true;
+
+            try {
+                await postSchedule(unit, value, enabled);
+            } catch (error) {
+                logEvent('ERROR', 'Failure to update schedule. Check console for details.');
+            } finally {
+                postScheduleBtn.textContent = 'Save & Activate Schedule';
+                // The disabled state is handled by updateUI based on the new toggle state
+                updateUI();
+            }
+        };
+
+        const handleStopBot = async () => {
+            if (!botState.isRunning) return;
+
+            stopBotBtn.textContent = 'Stopping...';
+            stopBotBtn.disabled = true;
+
+            try {
+                await stopBot();
+            } catch (error) {
+                logEvent('ERROR', 'Simulated failure to send stop command.');
+            } finally {
+                stopBotBtn.textContent = 'Stop Bot';
+            }
+        };
+
+        function showLoader() {
+
+            document.getElementById('page-loader').style.display = 'flex';
+
+        }
+
+        // Hide loader
+
+        function hideLoader() {
+
+            document.getElementById('page-loader').style.display = 'none';
+
+        }
+
+        const handleSkip = async () => {
+            if (!botState.isRunning) return;
+
+            skipButton.textContent = 'Skipping...';
+            skipButton.disabled = true;
+
+            showLoader();
+
+
+            try {
+                const response = await fetch(SKIP_API_URL);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const apiData = await response.json();
+                console.log(apiData)
+
+                if (apiData.success) {
+                    updateUI();
+                } else {
+                    alert('ERROR', apiData.error)
+                    logEvent('ERROR', apiData.error);
+                }
+
+            } catch (error) {
+                logEvent('CRITICAL', `API Fetch Error: ${error.message}. Is the local server running at ${API_URL}?`);
+            } finally {
+                skipButton.textContent = 'Skip';
+                hideLoader();
+            }
+
+
+            // try {
+            //     await skipProcess();
+            // } catch (error) {
+            //     logEvent('ERROR', 'Simulated failure to send skip command.');
+            // } finally {
+            //     skipButton.textContent = 'Skip';
+            // }
+        };
+
+        const logOut = () => {
+            if (confirm("Are you sure you want to log out?")) {
+                window.location.href = "/logout"; // Redirect after success
+            }
+        };
+
+        // --- Modal Handlers ---
+
+        const openResetModal = () => {
+            resetModal.classList.remove('modal-hidden');
+            resetModal.classList.add('modal-active');
+        };
+
+        const closeResetModal = () => {
+            resetModal.classList.remove('modal-active');
+            resetModal.classList.add('modal-hidden');
+        };
+
+        function showFactoryLoader() {
+            document.getElementById('factoryLoader').classList.remove('hidden');
+        }
+        function hideFactoryLoader() {
+            document.getElementById('factoryLoader').classList.add('hidden');
+        }
+
+        const handleConfirmReset = async () => {
+            closeResetModal();
+
+            showFactoryLoader();
+            resetButton.disabled = true;
+            try {
+                const response = await fetch(RESET_API_URL);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const apiData = await response.json();
+                console.log(apiData)
+
+                if (apiData.success) {
+                    fetchSchedulerConfig();
+                    updateUI();
+                } else {
+                    alert('ERROR', apiData.error)
+                    logEvent('ERROR', apiData.error);
+                }
+
+            } catch (error) {
+                logEvent('CRITICAL', `API Fetch Error: ${error.message}. Is the local server running at ${API_URL}?`);
+            } finally {
+                resetButton.disabled = false;
+                hideFactoryLoader();
+            }
+
+            // try {
+
+            //     await resetFactory();
+
+            // } catch (error) {
+            //     console.error("Simulated Reset failed:", error);
+
+            // } finally {
+            //     resetButton.textContent = 'Factory Reset';
+            //     resetButton.disabled = false;
+            // }
+
+        };
+
+
+        function showFeedback(message, type) {
+
+            if (type === 'error') {
+                alert(message)
+            }
+        }
+
+        function formatApiDate(dateString) {
+            try {
+                // Replace space with 'T' for reliable ISO parsing, and handle the timezone offset
+                const isoString = dateString.replace(' ', 'T');
+                const date = new Date(isoString);
+
+                // Use the user's local settings for display
+                const formatted = date.toLocaleString(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                });
+
+                return `${formatted}`;
+            } catch (e) {
+                console.error("Date parsing error:", e);
+                return "Date format error";
+            }
+        }
+
+        async function fetchStatus(retryCount = 0) {
+            updateButton.disabled = true;
+            lastProcessedDateEl.textContent = 'Loading...';
+
+            try {
+                const response = await fetch(LAST_READ_EMAIL_URL, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    console.log(data.date)
+                    console.log(formatApiDate(data.date))
+                    lastProcessedDateEl.textContent = formatApiDate(data.date);
+                    showFeedback('Status loaded successfully.', 'success');
+                } else {
+                    throw new Error(data.error || 'Unknown error occurred on server.');
+                }
+            } catch (error) {
+                console.error("Fetch Status Error:", error);
+
+                // Implement Exponential Backoff for retries
+                if (retryCount < 3) {
+                    const delay = Math.pow(2, retryCount) * 1000;
+                    console.log(`Retrying in ${delay / 1000}s...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return fetchStatus(retryCount + 1);
+                }
+
+                // Fallback for demonstration/error state since the local API will fail
+                lastProcessedDateEl.textContent = 'N/A';
+                showFeedback(`Failed to connect to API after 3 attempts. Details: ${error.message}`, 'error');
+            } finally {
+                updateButton.disabled = false;
+            }
+        }
+
+        function openModal() {
+            // Set the current local date/time as the default input value
+            const now = new Date();
+            // Format to YYYY-MM-DDThh:mm (required format for datetime-local input)
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+
+            newDatetimeInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+            updateModal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden'); // Prevent scrolling behind modal
+        }
+
+        function closeModal() {
+            updateModal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        async function postUpdate() {
+            const selectedDatetime = newDatetimeInput.value;
+            if (!selectedDatetime) {
+                showFeedback('Please select a valid date and time.', 'error');
+                return;
+            }
+
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+
+            closeModal(); // Close modal immediately
+
+            try {
+                // Data format as requested: JSON
+                const postData = {
+                    "new_process_date": selectedDatetime // Sending ISO 8601 local format
+                };
+
+                const response = await fetch(LAST_READ_EMAIL_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(postData),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showFeedback('Schedule updated successfully! Fetching new status...', 'success');
+                } else {
+                    throw new Error(data.error || 'Server reported failure.');
+                }
+
+            } catch (error) {
+                console.error("Post Update Error:", error);
+                showFeedback(`Failed to update schedule. Details: ${error.message}. Please check your local server.`, 'error');
+                // Even on error, we attempt to refresh to show any possible status change
+
+            } finally {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Schedule';
+            }
+        }
+
+
+        function animateIcon(button) {
+            const icon = button.querySelector('.icon');
+            icon.classList.add('spin-animation');
+
+            // Remove the class after animation ends so it can be triggered again
+            icon.addEventListener('animationend', () => {
+                icon.classList.remove('spin-animation');
+            }, { once: true });
+
+            init();
+        }
+
+        const startBot = async () => {
+            closeResetModal();
+            // resetButton.disabled = true;
+            const botUrl = botState.isRunning ? STOP_BOT : START_BOT;
+            
+            if (botUrl === STOP_BOT){
+                showFactoryLoader();
+            }
+            
+            try {
+                const response = await fetch(botUrl);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const apiData = await response.json();
+                console.log(apiData)
+
+                if (apiData.success) {
+                    updateUI();
+                } else {
+                    // alert('ERROR', apiData.error)
+                    logEvent('ERROR', apiData.error);
+                }
+
+            } catch (error) {
+                logEvent('CRITICAL', `API Fetch Error: ${error.message}. Is the local server running at ${API_URL}?`);
+            } finally {
+                // resetButton.disabled = false;
+                hideFactoryLoader();
+            }
+
+        };
+
+        const init = async () => {
+            // 1. Load initial schedule config ONLY once from the dedicated endpoint
+            await fetchSchedulerConfig();
+
+            // 2. Start polling for status and logs
+            startPolling();
+
+            // Add Listeners
+            scheduleToggle.addEventListener('change', handleScheduleToggle);
+            scheduleForm.addEventListener('submit', handleScheduleSubmit);
+            // stopBotBtn.addEventListener('click', handleStopBot);
+            skipButton.addEventListener('click', handleSkip);
+
+            resetButton.addEventListener('click', openResetModal);
+            logOutButton.addEventListener('click', logOut);
+            cancelResetBtn.addEventListener('click', closeResetModal);
+            confirmResetBtn.addEventListener('click', handleConfirmReset);
+        };
+
+        // Start application
+        window.onload = init;
+
+    </script>
+</body>
+
+</html>

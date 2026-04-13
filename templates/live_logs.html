@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCC - Logs Viewer</title>
+    <!-- Load Tailwind CSS -->
+    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
+    <script src="{{url_for('static',filename='tailwind.js')}}"></script>
+
+    <link rel="icon" href="/static/torrent.ico">
+    <!-- Configure Tailwind to use Inter font and custom theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#1d4ed8', // Blue-700
+                        secondary: '#34d399', // Emerald-400 - used for accents in dark mode
+                        background: '#f3f4f6', // Gray-100
+                        card: '#1f2937', // Darker gray for card backgrounds
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #111827;
+            /* Dark background */
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            /* Gray-700 */
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+            /* Gray-600 */
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
+            /* Slightly slower transition for better visibility */
+        }
+
+        .accordion-content.open {
+            /* Increased max-height to guarantee all content is visible */
+            max-height: 10000px;
+            padding-top: 1.25rem;
+            /* pt-5 */
+        }
+
+        /* Dark Mode Alternating Colors for Headers */
+        .log-entry:nth-child(even) .status-header {
+            background-color: #000c20;
+            /* Gray-700 */
+        }
+
+        .log-entry:nth-child(odd) .status-header {
+            background-color: #060a00;
+            /* Gray-800 */
+        }
+
+        .pr-2.custom-scroll {
+            max-height: 300px;
+            /* Set the height limit */
+            overflow-y: auto;
+            /* Enable vertical scrolling */
+            overflow-x: hidden;
+            /* Hide horizontal scroll if not needed */
+        }
+    </style>
+</head>
+<!-- Applied dark background and light text to body -->
+
+<body class="bg-gray-900 font-sans p-4 sm:p-8 min-h-screen text-gray-100">
+
+    <header class="text-center mb-10">
+
+        <p class="text-4xl text-secondary font-extrabold " style="color: rgb(199, 218, 28);">DCC - Agent Processing Log Dashboard</p>
+    </header>
+
+    <main id="log-container" class="max-w-6xl mx-auto space-y-6">
+        <!-- Logs will be rendered here by JavaScript -->
+    </main>
+
+    <script>
+        // MOCK DATA: Using the large JSON provided by the user.
+        const MOCKED_LOG_DATA = {{ LOGS | tojson | safe }};
+        // Function to toggle the accordion content
+        const toggleAccordion = (index) => {
+            const content = document.getElementById(`content-${index}`);
+            const button = document.getElementById(`button-${index}`);
+
+            if (content.classList.contains('open')) {
+                content.classList.remove('open');
+                button.innerHTML = '&#9660; Details'; // Down arrow
+            } else {
+                content.classList.add('open');
+                button.innerHTML = '&#9650; Hide Details'; // Up arrow
+            }
+        };
+
+        function formatApiDate(dateString) {
+            try {
+                // Replace space with 'T' for reliable ISO parsing, and handle the timezone offset
+                const isoString = dateString.replace(' ', 'T');
+                const date = new Date(isoString);
+
+                // Use the user's local settings for display
+                const formatted = date.toLocaleString(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                });
+
+                return `${formatted}`;
+            } catch (e) {
+                console.error("Date parsing error:", e);
+                return "Date format error";
+            }
+        }
+
+
+        function formatDateTime(timestamp) {
+            // Convert the string to a Date object
+            const date = new Date(timestamp);
+
+            // Options for formatting
+            const options = {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            };
+
+            // Format using Intl.DateTimeFormat
+            return new Intl.DateTimeFormat('en-GB', options).format(date);
+        }
+
+
+        // Function to format the status log (updated for dark mode)
+        const renderStatusLog = (status) => {
+            // PID extraction remains the same for the header
+            const pidMatch = status[1].match(/PID: (\d+)/);
+            const pid = pidMatch ? pidMatch[1] : 'N/A';
+
+            return `
+                <div class="p-4 bg-gray-900 rounded-lg border border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-300 mb-3">Process Logs (PID: ${pid})</h3>
+                    <div class="max-h-60 overflow-y-auto space-y-1 text-sm text-gray-400">
+                        ${status.map(line => {
+                const isError = line.includes('terminate');
+                const isHeader = line.startsWith('5.');
+                const isDetail = line.startsWith('>');
+                let style = 'text-gray-400';
+                if (isError) style = 'font-bold text-red-400 bg-red-900/30 p-1 rounded';
+                if (isHeader) style = 'font-semibold text-secondary mt-2 pt-2 border-t border-gray-700'; // Accent color for headers
+                if (isDetail) style = 'ml-4 text-green-400';
+
+                return `<p class="${style}">${line.replace(/<|>/g, '')}</p>`;
+            }).join('')}
+                    </div>
+                </div>
+            `;
+        };
+
+        // Function to render the processed emails (updated for dark mode)
+        const renderProceededEmails = (email) => {
+            if (!email.attchments && (!email.result || email.result.length === 0)) {
+                return '<p class="text-center text-gray-500 italic">No attachments or successful processing results recorded for this email.</p>';
+            }
+
+            // 1. Collect all PDFs from potentially nested attachment arrays (e.g., 'pdfs', 'roayal.zip', etc.)
+            let allPdfs = [];
+            if (email.attchments) {
+                for (const key in email.attchments) {
+                    const attachmentArray = email.attchments[key];
+                    if (Array.isArray(attachmentArray)) {
+                        allPdfs.push(...attachmentArray);
+                    }
+                }
+            }
+
+            // 2. Helper to check if a filename was successfully processed (for cross-referencing)
+            const getProcessingStatus = (filename) => {
+                if (email.result && Array.isArray(email.result)) {
+                    const res = email.result.find(r => r.PDF_FileName === filename);
+                    if (res && res.status === true) {
+                        return { label: `${res.no}`, color: 'bg-green-700/30 text-green-400' };
+                    }
+                    if (res && res.status === false) {
+                        return { label: 'Failed (See Log)', color: 'bg-red-700/30 text-red-400' };
+                    }
+                }
+                // Default status if not found in results or result is null/empty
+                return { label: 'Not Processed', color: 'bg-gray-700/30 text-gray-400' };
+            };
+
+
+            // 3. Build the Comprehensive Attachments Table content
+            let attachmentsHtml = '';
+
+            if (allPdfs.length > 0) {
+                attachmentsHtml = `
+                    <h4 class="font-semibold text-gray-300 mt-4 mb-2">Attached Documents Summary (${allPdfs.length} total PDFs):</h4>
+                    <div class="overflow-x-auto rounded-lg">
+                        <table class="min-w-full divide-y divide-gray-700">
+                            <thead class="bg-gray-700">
+                                <tr>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">File Name</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Digital Sign</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Processing Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-gray-800 divide-y divide-gray-700 text-sm">
+                                ${allPdfs.map(pdf => {
+                    const signedStatus = pdf['Digital Sign'] ? 'YES' : 'NO';
+                    const signedColor = pdf['Digital Sign'] ? 'font-medium text-green-400' : 'font-medium text-yellow-400';
+
+                    const processedStatus = getProcessingStatus(pdf.filename);
+
+                    return `
+                                        <tr>
+                                            <td class="px-3 py-2 whitespace-normal break-words text-gray-100">${pdf.filename}</td>
+                                            <td class="px-3 py-2 whitespace-nowrap">
+                                                <span class="${signedColor}">${signedStatus}</span>
+                                            </td>
+                                            <td class="px-3 py-2 whitespace-nowrap">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${processedStatus.color}">
+                                                    ${processedStatus.label}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    `;
+                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                attachmentsHtml = '<p class="text-sm text-gray-500 italic mt-4">No PDF attachments found in this email.</p>';
+            }
+
+
+            // 4. Return the complete email card
+            return `
+                <div class="bg-gray-900 p-4 rounded-xl shadow-md border border-gray-700 mt-4">
+                    <div class="flex flex-wrap justify-between items-start mb-3 border-b border-gray-700 pb-2">
+                        <div class="w-full sm:w-1/2">
+                            <p class="font-bold text-lg text-secondary truncate" title="${email.subject}">Subject: ${email.subject}</p>
+                            <p class="text-sm text-gray-400">From: <span class="font-medium">${email.from}</span></p>
+                        </div>
+                        <div class="w-full sm:w-1/2 text-left sm:text-right mt-2 sm:mt-0">
+                            <p class="text-sm text-gray-500">Email Time: ${formatApiDate(email.email_date_time.split('T')[0])}</p>
+                            <p class="text-sm text-gray-500">Processed At: ${formatDateTime(email.process_date_time)}</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs sm:text-sm font-semibold mb-3">
+                        <div class="bg-blue-900/30 text-blue-400 p-2 rounded-lg">Total PDFs: ${email['Total Proceed Pdf'] || 'N/A'}</div>
+                        <div class="bg-green-900/30 text-green-400 p-2 rounded-lg">Success: ${email['Success Proceed Pdf'] || 'N/A'}</div>
+                        <div class="bg-red-900/30 text-red-400 p-2 rounded-lg">Errors: ${email['Error Proceed Pdf'] || 'N/A'}</div>
+                    </div>
+                    
+                    ${attachmentsHtml}
+
+                </div>
+            `;
+        };
+
+        // Main rendering function, iterates through all log sessions
+        const renderLogs = (logData) => {
+            const container = document.getElementById('log-container');
+
+            if (!logData || logData.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 p-8 rounded-xl bg-gray-800 shadow-lg ring-1 ring-gray-700">No logs found. The process may not have run yet.</div>';
+                return;
+            }
+
+            container.innerHTML = ''; // Clear loading message
+
+            // 1. Reverse the array so the latest log (highest chronological number) is iterated first.
+            const logsToDisplay = [...logData].reverse();
+            const totalLogs = logData.length;
+
+            logsToDisplay.forEach((log, reversedIndex) => {
+                // 2. Calculate the chronological session number: totalLogs - reversedIndex
+                const chronologicalNumber = totalLogs - reversedIndex;
+
+                const startTimeLine = log.status.find(s => s.startsWith('3. Start Process'));
+                // const emailsFoundLine = log.status.find(s => s.includes('Emails Found'));
+
+                const pidMatch = log.status[1].match(/PID: (\d+)/);
+                const pid = pidMatch ? pidMatch[1] : 'N/A';
+
+                const startTime = startTimeLine ? startTimeLine.split(' - ')[1].substring(0, 19) : 'N/A';
+
+                const emailsFound = log.proceed_emails.length;
+
+                // Sum total processed PDFs across all emails in this session
+                const totalProceeded = log.proceed_emails.reduce((sum, email) => sum + parseInt(email['Error Proceed Pdf'] || 0) + parseInt(email['Success Proceed Pdf'] || 0), 0);
+
+                const sessionStatus = log.status[log.status.length - 1].includes('terminate') ? 'Terminated' : 'Completed';
+
+                // Adjusted status colors for dark mode visibility
+                const statusColor = sessionStatus === 'Terminated' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-green-900/30 text-green-400';
+
+                // Create the main log card (accordion header)
+                const logCard = document.createElement('div');
+                logCard.className = 'log-entry bg-gray-800 shadow-xl rounded-xl overflow-hidden ring-1 ring-gray-700';
+
+                logCard.innerHTML = `
+                    <div id="header-${reversedIndex}" class="status-header p-5 cursor-pointer select-none transition duration-150 hover:shadow-2xl hover:bg-gray-700">
+                        <div class="flex flex-wrap justify-between items-center">
+                            <div class="flex flex-col mb-3 sm:mb-0">
+                                <h2 class="text-xl font-bold text-white">
+                                    Processing Session #${chronologicalNumber} (PID: ${pid})
+                                </h2>
+                                <p class="text-sm font-medium text-gray-400">
+                                    Start Time: <span class="text-gray-200">${startTime}</span>
+                                </p>
+                            </div>
+
+                            <div class="flex items-center space-x-4">
+                                <div class="flex flex-col items-end sm:flex-row sm:space-x-4">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusColor} mb-1 sm:mb-0">
+                                        ${sessionStatus}
+                                    </span>
+                                    <span class="text-md font-semibold text-gray-300">
+                                        ${emailsFound} Emails Found / ${totalProceeded} PDFs Processed
+                                    </span>
+                                </div>
+                                <button id="button-${reversedIndex}" onclick="toggleAccordion(${reversedIndex})" class="text-secondary font-bold transition duration-150 transform hover:scale-105">
+                                    &#9660; Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="content-${reversedIndex}" class="accordion-content px-5 pb-5">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-5">
+                            <!-- Status Log Column -->
+                            <div class="lg:col-span-1">
+                                ${renderStatusLog(log.status)}
+                            </div>
+                            <!-- Proceeded Emails Column -->
+                            <div class="lg:col-span-2">
+                                <h3 class="text-lg font-semibold text-gray-300 mb-3 border-b border-gray-700 pb-1">Processed Email & PDF Breakdown (${log.proceed_emails.length} Emails)</h3>
+                                <div class="pr-2 custom-scroll space-y-4">
+                                    ${log.proceed_emails.map(email => renderProceededEmails(email)).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(logCard);
+            });
+        };
+
+        // Initialize the log rendering process on window load using static data
+        window.onload = () => renderLogs(MOCKED_LOG_DATA);
+    </script>
+</body>
+
+</html>
