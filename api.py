@@ -88,7 +88,8 @@ def scheduled_bot_run():
             "start_bot_date_time":f"{datetime.now()}"
         }
 
-        
+        update_json_file("bot/bot_status.json",bot_data)
+
         start_process()
         process_ref.join()
         
@@ -112,7 +113,8 @@ def scheduled_bot_run():
             # Return the next run time
             bot_data['Next run time'] = job.next_run_time.strftime('%Y-%m-%d %H:%M:%S')
             data["Next run time"] = job.next_run_time.strftime('%Y-%m-%d %H:%M:%S')
-    
+
+        update_json_file("bot/bot_status.json",bot_data)
 
         with open("bot/scheduler.json","w") as file:
             json.dump(data, file, indent=2)
@@ -316,6 +318,37 @@ def reset_bot():
     except Exception as e:
         return jsonify({"success":False,"error":str(e)})
      
+@app.route("/stop",methods=["GET"])
+def stop_bot():
+    global scheduler
+    try:
+        
+        scheduler.remove_all_jobs()
+        stop_process()
+
+        data = load_schedule_config()
+        
+        d1 = {
+            "run": False,
+        }
+
+        d2 = {
+
+            "enable": False,
+            "last_updated_scheduler": str(datetime.now()),
+            "duration": str(data.get("duration","minutes")),
+            "interval_minutes": data.get("interval_minutes","1")
+            
+        }
+
+        update_json_file("bot/bot_status.json",d1)
+        update_json_file("bot/scheduler.json",d2)
+
+        return {"success":True,"msg":"Bot Stoppped..."}
+
+    except Exception as e:
+        return {"success":False,"error":f"Error: {str(e)} Durring Bot Stop."}
+
 
 # start the bot immediately
 @app.route("/start",methods=["GET"])
@@ -354,7 +387,7 @@ def home():
 default()
 
 if __name__ == '__main__':
-
+    default()
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(certfile='cert.pem', keyfile='key.pem')
     app.run(host='0.0.0.0', port=5000, ssl_context=context,debug=True)

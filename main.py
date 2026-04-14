@@ -9,7 +9,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 import os
 from dotenv import load_dotenv
-from sap_post import verify_data_from_sap
+from sap_post import verify_data_from_sap,send_data_to_sap
 from glob import glob
 import pandas as pd 
 import httpx
@@ -168,7 +168,7 @@ async def start(shared_data=None):
     
     shared_data["status"].append(f"1). Start Process - {str(datetime.now())}")   
 
-    download_dir = os.getenv("DOWNLOAD_DIR")    # folder path
+    download_dir = os.path.join(os.getcwd(),os.getenv("DOWNLOAD_DIR"))    # folder path
     os.makedirs(download_dir, exist_ok=True)
 
     edge_options = Options()
@@ -222,6 +222,8 @@ async def start(shared_data=None):
 
         time.sleep(10)
 
+        shared_data["status"].append(">>> Apply Filter To Get 50 Records and IDs Of Work/Object ...") 
+
         setting_btn = driver.find_element(By.XPATH, "//div[@title='Open Settings']")
         driver.execute_script("arguments[0].click();", setting_btn)
 
@@ -232,6 +234,27 @@ async def start(shared_data=None):
         )
 
         for tab in tabs:
+            if tab.text.strip() == "Column Selection":
+                tab_id = tab.get_attribute("id")
+                driver.find_element(By.ID, tab_id).click()
+                time.sleep(2)
+                driver.switch_to.active_element.send_keys(Keys.TAB)
+                time.sleep(1)
+                driver.switch_to.active_element.send_keys(Keys.SPACE)
+                time.sleep(1)
+                for i in range(0,10):
+                    driver.switch_to.active_element.send_keys(Keys.TAB)
+                time.sleep(1)
+                driver.switch_to.active_element.send_keys(Keys.SPACE)
+                time.sleep(2)
+                break
+
+        # Get all div elements with the given class
+        tabs = driver.find_elements(
+            By.XPATH, "//div[@class='lsTabStrip--item-title']"
+        )
+
+        for tab in tabs:    
             if tab.text.strip() == "Display":
 
                 # Get the ID of the matched div
@@ -239,23 +262,16 @@ async def start(shared_data=None):
 
                 # Click using the ID
                 driver.find_element(By.ID, tab_id).click()
+                time.sleep(2)
+                driver.switch_to.active_element.send_keys(Keys.TAB)
+                time.sleep(1)
+                driver.switch_to.active_element.send_keys("50", Keys.TAB)
+                time.sleep(1)
                 break
-        
-        time.sleep(2)
 
-        driver.switch_to.active_element.send_keys(Keys.TAB)
+        driver.switch_to.active_element.send_keys(Keys.CONTROL, Keys.ENTER)
+        time.sleep(10)
 
-        time.sleep(1)
-
-        driver.switch_to.active_element.send_keys("50", Keys.TAB)
-
-        time.sleep(1)
-
-        driver.switch_to.active_element.send_keys(Keys.CONTROL,Keys.ENTER)
-
-        time.sleep(20)
-
-        shared_data["status"].append(">>> Apply Filter To Get 50 Records") 
         
         tbody = wait.until(
             EC.presence_of_element_located(
@@ -293,24 +309,31 @@ async def start(shared_data=None):
                     })
 
             table_data.append(row_data)
-
+        
         data = []
         for i in table_data:
-            if len(i) == 6:
+            if len(i) == 32:
 
                 row_data = {}
 
-                if i[1]["span_id"] != "" and i[1]['text'] != "" and i[2]['text'] != "" and  i[3]['text'] != "" :
+                if i[1]["span_id"] != "" and i[1]['text'] != "" and i[2]['text'] != "" and  i[3]['text'] != "" and i[6]['text'] != "" and i[9]['text'] != "" and i[22]['text'] != "":
                     row_data['ID'] = i[1]["span_id"].split("-")[0]
                     row_data['SUBJECT'] = i[1]['text']
                     row_data['STATUS'] = i[2]['text']
+                    row_data['WIGROUP'] = i[6]['text']
+                    row_data['OBJECTID'] = i[9]['text'].split("/")[1]
+                    row_data['WORKITEMID'] = i[22]['text']
                     
                     dt = datetime.strptime(i[3]['text'], '%d.%m.%Y %H:%M:%S')
                     row_data['CREATEDON'] = dt.strftime('%Y%m%d')
 
                     row_data['DUEDATE'] = "" # i[4]['text']
                     row_data['CREATEDBY'] = i[5]['text']
-                    data.append(row_data)
+
+                    res = verify_data_from_sap(row_data['OBJECTID'],row_data['WORKITEMID'])
+
+                    if not res:
+                        data.append(row_data)
 
         shared_data["status"].append(f">>> {len(data)} - Records Found")
 
@@ -337,23 +360,6 @@ async def start(shared_data=None):
 
             row['URL'] = current_url
             
-            for i in current_url.split('&'):
-            
-                if 'OBJECT_ID' in i:
-                    row['OBJECTID'] = i.split('=')[1].split('%2f')[1]
-
-                elif 'WORKITEM_ID' in i:
-                    row['WORKITEMID'] = i.split('=')[1]
-            
-
-            if verify_data_from_sap(row['OBJECTID'],row['WORKITEMID']):
-                driver.close()
-                time.sleep(2)
-                driver.switch_to.window(main_window)
-                shared_data["status"].append(f"   - Recored Allready Into Z TABLE.")
-                shared_data["status"].append(f">>> {index+1}. {row['SUBJECT']} Proccesed.")
-                continue
-
             time.sleep(5)
             
             setting_btn = driver.find_element(By.XPATH, "//div[@title='Open Settings']")
@@ -409,7 +415,7 @@ async def start(shared_data=None):
 
             result = call_model(prompt+transactions)
 
-            if len(result) == 0:
+            if not result:
                 shared_data["status"].append(f"   - Somthing Went Wrong At Calling Azure AI")
                 driver.close()
                 time.sleep(2)
@@ -426,7 +432,7 @@ async def start(shared_data=None):
             row['EXPLANATION'] = parsed_data.get('Explanation','')
             row['APPROVAL_MODE'] = parsed_data.get('APPROVAL_MODE','')
 
-            append_to_json_file("logs.json", row)
+            append_to_json_file("logs.json", row) 
 
             if os.path.exists(excel_file):
                 os.remove(excel_file)
@@ -435,13 +441,26 @@ async def start(shared_data=None):
             else:
                 shared_data["status"].append(f"   - Excel File not found.")
 
+            time.sleep(2)
+
+            result = send_data_to_sap(row)
+
+            if result.get("status"):
+                shared_data["status"].append(f"   ✅ Data Saved Into SAP.")
+            else:
+                shared_data["status"].append(f"   🚨 Data Not Saved Into SAP. Error:{result.get('error')}")
 
             driver.close()
             time.sleep(2)
             driver.switch_to.window(main_window)
 
-            return {"success":True,"data":shared_data}
+            shared_data["status"].append(f">>> {index+1}. {row['SUBJECT']} Proccesed.")
+
+
+        return {"success":True}
 
     except Exception as e:
+        import traceback
+        print(traceback.print_exc())
         return {"success":False,"error":str(e),"data":shared_data}
 

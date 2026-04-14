@@ -9,6 +9,8 @@ def send_data_to_sap(SAP_JSON):
 
     try:
 
+        SAP_JSON.pop('ID')
+        SAP_JSON.pop('APPROVAL_MODE')
         session = requests.Session()
         POST_URL = os.getenv("Z_URL")
         SAP_USERNAME =  os.getenv("Z_SAP_USER")
@@ -44,16 +46,22 @@ def send_data_to_sap(SAP_JSON):
         )
         print(response.json())
 
+
         # --- Step 3: Handle Response ---
         if response.status_code in [200, 201]:
             
-            print("✅ Data Post Successfully In SAP!")
-            
+            if response.json().get('d','').get('__metadata',''):
+                return {'status':True}
+                
+            return {'status':False,'error':"Somthing Went Wrong!" }
+
         else:
-            print("❌ Error: Data Not Post In SAP!")
+            return {'status':False ,'error': response.json().get("error","").get("message","").get("value","")}
 
     except Exception as e:
-        return {'status':False ,'error': str(e) , "error_code":"130"}
+        import traceback
+        print(traceback.print_exc())
+        return {'status':False ,'error': str(e)}
 
 def verify_data_from_sap(OBJECTID,WORKITEMID):
 
@@ -152,4 +160,6 @@ x = [
 #     i['EXPLANATION'] = "XYZ"
 #     i['OBJECTID'] = i['OBJECTID'].split('%2f')[1]
 #     print(send_data_to_sap(i))    
-    
+
+
+

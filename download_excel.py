@@ -238,9 +238,9 @@ prefs = {
 
 edge_options.add_experimental_option("prefs", prefs)
 edge_options.add_argument("--start-maximized")
-edge_options.add_argument("--headless")
-edge_options.add_argument("--disable-gpu")
-edge_options.add_argument("--window-size=1920,1080")
+# edge_options.add_argument("--headless")
+# edge_options.add_argument("--disable-gpu")
+# edge_options.add_argument("--window-size=1920,1080")
 
 service = Service(r"C:\Users\111439\Downloads\edgedriver_win64 (1)\msedgedriver.exe")
 
@@ -287,6 +287,27 @@ tabs = driver.find_elements(
 )
 
 for tab in tabs:
+    if tab.text.strip() == "Column Selection":
+        tab_id = tab.get_attribute("id")
+        driver.find_element(By.ID, tab_id).click()
+        time.sleep(2)
+        driver.switch_to.active_element.send_keys(Keys.TAB)
+        time.sleep(1)
+        driver.switch_to.active_element.send_keys(Keys.SPACE)
+        time.sleep(1)
+        for i in range(0,10):
+            driver.switch_to.active_element.send_keys(Keys.TAB)
+        time.sleep(1)
+        driver.switch_to.active_element.send_keys(Keys.SPACE)
+        time.sleep(2)
+        break
+
+# Get all div elements with the given class
+tabs = driver.find_elements(
+    By.XPATH, "//div[@class='lsTabStrip--item-title']"
+)
+
+for tab in tabs:    
     if tab.text.strip() == "Display":
 
         # Get the ID of the matched div
@@ -294,21 +315,15 @@ for tab in tabs:
 
         # Click using the ID
         driver.find_element(By.ID, tab_id).click()
+        time.sleep(2)
+        driver.switch_to.active_element.send_keys(Keys.TAB)
+        time.sleep(1)
+        driver.switch_to.active_element.send_keys("50", Keys.TAB)
+        time.sleep(1)
         break
 
-time.sleep(2)
-
-driver.switch_to.active_element.send_keys(Keys.TAB)
-
-time.sleep(1)
-
-driver.switch_to.active_element.send_keys("50", Keys.TAB)
-
-time.sleep(1)
-
-driver.switch_to.active_element.send_keys(Keys.CONTROL,Keys.ENTER)
-
-time.sleep(20)
+driver.switch_to.active_element.send_keys(Keys.CONTROL, Keys.ENTER)
+time.sleep(5)
 
 tbody = wait.until(
     EC.presence_of_element_located(
@@ -349,22 +364,31 @@ for row in rows:
 
 data = []
 for i in table_data:
-    if len(i) == 6:
+
+    if len(i) == 32:
 
         row_data = {}
 
-        if i[1]["span_id"] != "" and i[1]['text'] != "" and i[2]['text'] != "" and  i[3]['text'] != "" :
+        if i[1]["span_id"] != "" and i[1]['text'] != "" and i[2]['text'] != "" and  i[3]['text'] != "" and i[6]['text'] != "" and i[9]['text'] != "" and i[22]['text'] != "":
             row_data['ID'] = i[1]["span_id"].split("-")[0]
             row_data['SUBJECT'] = i[1]['text']
             row_data['STATUS'] = i[2]['text']
+            row_data['WIGROUP'] = i[6]['text']
+            row_data['OBJECTID'] = i[9]['text'].split("/")[1]
+            row_data['WORKITEMID'] = i[22]['text']
             
             dt = datetime.strptime(i[3]['text'], '%d.%m.%Y %H:%M:%S')
             row_data['CREATEDON'] = dt.strftime('%Y%m%d')
 
             row_data['DUEDATE'] = "" # i[4]['text']
             row_data['CREATEDBY'] = i[5]['text']
-            data.append(row_data)
+            
+            res = verify_data_from_sap(row_data['OBJECTID'],row_data['WORKITEMID'])
+            print("👌: ",res)
+            if not res:
+                data.append(row_data)
 
+print(">>> ",data)
 for row in data:
 
     driver.find_element(By.ID,row['ID']).click()
@@ -387,20 +411,11 @@ for row in data:
 
     row['URL'] = current_url
     
-    for i in current_url.split('&'):
-    
-        if 'OBJECT_ID' in i:
-            row['OBJECTID'] = i.split('=')[1].split('%2f')[1]
-
-        elif 'WORKITEM_ID' in i:
-            row['WORKITEMID'] = i.split('=')[1]
-    
-
-    if verify_data_from_sap(row['OBJECTID'],row['WORKITEMID']):
-        driver.close()
-        time.sleep(2)
-        driver.switch_to.window(main_window)
-        continue
+    # if verify_data_from_sap(row['OBJECTID'],row['WORKITEMID']):
+    #     driver.close()
+    #     time.sleep(2)
+    #     driver.switch_to.window(main_window)
+    #     continue
 
     time.sleep(5)
     
@@ -428,7 +443,6 @@ for row in data:
 
     time.sleep(2)
 
-
     driver.switch_to.active_element.send_keys(Keys.CONTROL, Keys.ENTER)
 
     time.sleep(10)
@@ -443,7 +457,6 @@ for row in data:
     time.sleep(2)
     
     excel_file = get_latest_excel_file(os.getenv('DOWNLOAD_DIR'))
-
 
     transactions = read_excel(excel_file)
 
@@ -460,7 +473,10 @@ for row in data:
     row['EXPLANATION'] = parsed_data.get('Explanation','')
     row['APPROVAL_MODE'] = parsed_data.get('APPROVAL_MODE','')
 
-    append_to_json_file("logs.json", row)
+    print("👍 Row:",row)
+    # append_to_json_file("logs.json", row)
+
+    
 
     if os.path.exists(excel_file):
         os.remove(excel_file)
@@ -473,7 +489,6 @@ for row in data:
     time.sleep(2)
     driver.switch_to.window(main_window)
 
-    
 driver.close()
-driver.close()
+
 
