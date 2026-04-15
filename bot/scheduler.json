@@ -1,6 +1,7 @@
 {
-  "enable": false,
-  "last_updated_scheduler": "2026-04-13 18:01:41.174564",
+  "interval_minutes": 1,
+  "enable": true,
   "duration": "minutes",
-  "interval_minutes": 1
+  "last_updated_scheduler": "2026-04-15 11:36:24.254463",
+  "Next run time": "2026-04-15 14:00:24"
 }

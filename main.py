@@ -316,12 +316,12 @@ async def start(shared_data=None):
 
                 row_data = {}
 
-                if i[1]["span_id"] != "" and i[1]['text'] != "" and i[2]['text'] != "" and  i[3]['text'] != "" and i[6]['text'] != "" and i[9]['text'] != "" and i[22]['text'] != "":
+                if i[1]["span_id"] != "" and i[1]['text'] != "" and i[2]['text'] != "" and  i[3]['text'] != "" and i[6]['text'] != ""  and i[22]['text'] != "":
                     row_data['ID'] = i[1]["span_id"].split("-")[0]
                     row_data['SUBJECT'] = i[1]['text']
                     row_data['STATUS'] = i[2]['text']
                     row_data['WIGROUP'] = i[6]['text']
-                    row_data['OBJECTID'] = i[9]['text'].split("/")[1]
+                    row_data['OBJECTID'] = ""
                     row_data['WORKITEMID'] = i[22]['text']
                     
                     dt = datetime.strptime(i[3]['text'], '%d.%m.%Y %H:%M:%S')
@@ -330,7 +330,7 @@ async def start(shared_data=None):
                     row_data['DUEDATE'] = "" # i[4]['text']
                     row_data['CREATEDBY'] = i[5]['text']
 
-                    res = verify_data_from_sap(row_data['OBJECTID'],row_data['WORKITEMID'])
+                    res = verify_data_from_sap(row_data['WORKITEMID'])
 
                     if not res:
                         data.append(row_data)

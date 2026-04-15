@@ -63,12 +63,12 @@ def send_data_to_sap(SAP_JSON):
         print(traceback.print_exc())
         return {'status':False ,'error': str(e)}
 
-def verify_data_from_sap(OBJECTID,WORKITEMID):
+def verify_data_from_sap(WORKITEMID):
 
     try:
 
         session = requests.Session()
-        POST_URL = f"{os.getenv("Z_URL")}?$filter=OBJECTID eq '{OBJECTID}' and WORKITEMID eq '{WORKITEMID}'&$format=json"
+        POST_URL = f"{os.getenv("Z_URL")}?$filter= WORKITEMID eq '{WORKITEMID}'&$format=json"
         print(POST_URL)
     
         SAP_USERNAME =  os.getenv("Z_SAP_USER")
@@ -102,11 +102,11 @@ def verify_data_from_sap(OBJECTID,WORKITEMID):
             verify=False
         )
         res = response.json()
-
+        print(res)
         # --- Step 3: Handle Response ---
         if response.status_code in [200, 201]:
             
-            if len(res.get('d',False).get('results',False)) != 0:
+            if len(res.get('d').get('results')) != 0:
                 return True
             
             else:
@@ -151,7 +151,7 @@ x = [
     }
 ]      
 
-# print(verify_data_from_sap("294822B0CAF31EDFA1B483E0519249C6","000000437719"))
+# print(verify_data_from_sap("426161"))
 
 # for i in x:
 #     i.pop('ID')
