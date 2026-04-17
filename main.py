@@ -316,7 +316,7 @@ async def start(shared_data=None):
 
                 row_data = {}
 
-                if i[1]["span_id"] != "" and i[1]['text'] != "" and i[2]['text'] != "" and  i[3]['text'] != "" and i[6]['text'] != ""  and i[22]['text'] != "":
+                if i[1]["span_id"] != "" and i[1]['text'] != "" and i[2]['text'] != "" and  i[3]['text'] != "" and i[6]['text'] != ""  and i[22]['text'] != "" and "EAM" in i[1]['text'][:5]:
                     row_data['ID'] = i[1]["span_id"].split("-")[0]
                     row_data['SUBJECT'] = i[1]['text']
                     row_data['STATUS'] = i[2]['text']

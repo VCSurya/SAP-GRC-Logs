@@ -1,4 +1,6 @@
 {
-    "run": true,
-    "start_bot_date_time": "2026-04-15 14:00:24.315720"
+    "run": false,
+    "start_bot_date_time": "2026-04-16 14:11:22.240505",
+    "Process completed normally": true,
+    "end_bot_date_time": "2026-04-16 14:12:27.902826"
 }

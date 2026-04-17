@@ -249,8 +249,8 @@ driver = webdriver.Edge(service=service, options=edge_options)
 wait = WebDriverWait(driver, 20)
 
 driver.get(
-    "https://tgps4hdevapp.torrentgas.com:8240/sap/bc/webdynpro/sap/grfn_powl_inbox/?sap-client=335&sap-user=200142&sap-language=EN#"
-    #   "https://tgps4hqaapp.torrentgas.com:8220/sap/bc/webdynpro/sap/grfn_powl_inbox/?sap-client=333&sap-user=200142&sap-language=EN#"
+    # "https://tgps4hdevapp.torrentgas.com:8240/sap/bc/webdynpro/sap/grfn_powl_inbox/?sap-client=335&sap-user=200142&sap-language=EN#"
+      "https://tgps4hqaapp.torrentgas.com:8220/sap/bc/webdynpro/sap/grfn_powl_inbox/?sap-client=333&sap-user=200142&sap-language=EN#"
 )
 
 # Store main window handle
@@ -261,8 +261,8 @@ password_input = wait.until(
 )
 
 password_input.clear()
-password_input.send_keys("Dev*2d7g")
-# password_input.send_keys("Hello@7890")
+# password_input.send_keys("Dev*2d7g")
+password_input.send_keys("Hello@7890")
 
 driver.switch_to.active_element.send_keys(Keys.CONTROL, Keys.ENTER)
 
@@ -369,7 +369,8 @@ for i in table_data:
 
         row_data = {}
 
-        if i[1]["span_id"] != "" and i[1]['text'] != "" and i[2]['text'] != "" and  i[3]['text'] != "" and i[6]['text'] != "" and i[9]['text'] != "" and i[22]['text'] != "":
+        if i[1]["span_id"] != "" and i[1]['text'] != "" and i[2]['text'] != "" and  i[3]['text'] != "" and i[6]['text'] != "" and i[9]['text'] != "" and i[22]['text'] != "" and "EAM" in i[1]['text'][:5]:
+            
             row_data['ID'] = i[1]["span_id"].split("-")[0]
             row_data['SUBJECT'] = i[1]['text']
             row_data['STATUS'] = i[2]['text']
