@@ -8,15 +8,58 @@ import os
 import asyncio
 import main
 from apscheduler.schedulers.background import BackgroundScheduler
+from dotenv import load_dotenv
+from utils import encrypt_password,decrypt_password
 
-
+load_dotenv()
+ENV_FILE = ".env"
 app = Flask(__name__)
 CORS(app)
+
+app.secret_key = os.getenv('FLASK_SECRET_KEY')
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
 
 process_ref = shared_data = manager =None
 
 scheduler= BackgroundScheduler()
 scheduler.start()
+
+def save_env(env_data):
+    """Save dictionary back to .env file"""
+    with open(ENV_FILE, "w") as f:
+        for k, v in env_data.items():
+            if 'PASS' in k:
+                f.write(f'{k}={encrypt_password(v)}\n')
+            else:
+                f.write(f'{k}={v}\n')
+            
+def update_env(key, value):
+    """Add or update an environment variable"""
+    env_data = read_env()
+    env_data[key] = value
+    save_env(env_data)
+
+def load_env():
+    """Load environment variables from .env"""
+    if not os.path.exists(ENV_FILE):
+        open(ENV_FILE, 'w').close()  # create empty if not exists
+    load_dotenv(ENV_FILE)
+
+def read_env():
+    """Return all env vars as a dictionary"""
+    load_env()
+    env_data = {}
+    with open(ENV_FILE, "r") as f:
+        for line in f:
+            if line.strip() and not line.startswith("#"):
+                key, value = line.strip().split("=", 1)
+
+                if 'PASS' in key.replace(" ",""):
+                    env_data[key.replace(" ","")] = decrypt_password(value.replace(" ",""))
+                else:    
+                    env_data[key.replace(" ","")] = value.replace(" ","")
+
+    return env_data
 
 def update_json_file(file_path: str, data: dict) -> bool:
     
@@ -176,6 +219,38 @@ def default():  # start point
 
 
 # -------------------------------------------------------------
+
+@app.route('/env-configuration',methods=['GET'])
+def env_get_configuration():
+    try:
+        data = read_env()
+        return render_template("configuration.html",data=data)
+
+    except Exception as e:
+        return jsonify(str(e))
+
+@app.route('/update-configuration',methods=['POST'])
+def update_configuration():
+    try:
+        data = request.get_json()
+        env_data = read_env()
+
+        kay_name = data.get("kay_name")
+        list_of_keys = list(env_data.keys())
+
+        if kay_name in list_of_keys:
+                
+            update_env(kay_name,data.get("key_value"))
+            
+            return {"success":True,"msg":"Update Sucessfully!"}
+        else:
+            return {"success":False,"error":"Enter Valid Data!"}
+    
+    except Exception as e:
+        return {"success":False,"error":f"{str(e)}"}
+
+    finally:
+        load_dotenv(override=True)
 
 @app.route("/update_scheduler",methods=["POST","GET"])
 def update_scheduler_method():

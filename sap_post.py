@@ -1,6 +1,6 @@
 from datetime import datetime
 import requests
-
+from utils import decrypt_password
 from dotenv import load_dotenv
 import os
 load_dotenv()
@@ -11,10 +11,16 @@ def send_data_to_sap(SAP_JSON):
 
         SAP_JSON.pop('ID')
         SAP_JSON.pop('APPROVAL_MODE')
+        SAP_JSON.pop('DATE_TIME')
         session = requests.Session()
         POST_URL = os.getenv("Z_URL")
         SAP_USERNAME =  os.getenv("Z_SAP_USER")
-        SAP_PASSWORD = os.getenv("Z_SAP_PASS")
+        SAP_PASSWORD = "Tgpl@7890"
+
+        print(SAP_USERNAME)
+        print(SAP_PASSWORD)
+
+
         # --- Step 1: Fetch CSRF Token ---
         token_response = session.get(
             POST_URL,
@@ -72,7 +78,11 @@ def verify_data_from_sap(WORKITEMID):
         print(POST_URL)
     
         SAP_USERNAME =  os.getenv("Z_SAP_USER")
-        SAP_PASSWORD = os.getenv("Z_SAP_PASS")
+        SAP_PASSWORD = "Tgpl@7890"
+
+        print(SAP_USERNAME)
+        print(SAP_PASSWORD)
+
         # --- Step 1: Fetch CSRF Token ---
         token_response = session.get(
             POST_URL,
@@ -82,7 +92,7 @@ def verify_data_from_sap(WORKITEMID):
         )
 
         if token_response.status_code != 200:
-            return False
+            return False    
 
         csrf_token = token_response.headers.get("x-csrf-token")
         cookies = token_response.cookies
@@ -121,44 +131,59 @@ def verify_data_from_sap(WORKITEMID):
 
 
 x = [
-    {
-        "ID": "WDF8",
-        "SUBJECT": "EAM Audit review required for Pavan Jangam using FF_ID_BASIS2 on GRC_335",
+            {
+        "ID": "WDF7",
+        "SUBJECT": "EAM Audit review required for Pavan Jangam using FF1_DEV335 on S4P_SU01",
         "STATUS": "Decision pending",
-        "CREATEDON": "20241009",
-        "DUEDATE": "",
-        "CREATEDBY": "111142",
-        "URL": "https://tgps4hdevapp.torrentgas.com:8240/sap/bc/webdynpro/sap/grac_ui_spm_audit_wf?APPLID=GRFN_INBOX&ENTITY_ID=FFLOG&MODE=E&OBJECT_ID=FFLOG%2f294822B0CAF31EDFA1B483E0519249C6&POWL_QUERY=294822B0CAF31EDFA0E6138BCABE1ECF&REQNO=&VARIANT=DEFAULT&WI_GROUP_OWNE=200142&WORKITEM_ID=000000437719&sap-client=335&sap-language=EN#",
-        "OBJECTID": "FFLOG%2f294822B0CAF31EDFA1B483E0519249C6",
-        "WORKITEMID": "000000437719",
-        "RISKLEVEL": "HIGH",
-        "EXPLANATION": "The log shows multiple SU01 transactions indicating user maintenance with changes to user data, which is a sensitive and change-capable activity. This requires manual approval due to the high risk of user data modification. Other columns like Program were empty and ignored, but the transaction and activity data clearly indicate risky change activity.",
-        "APPROVAL_MODE": "MANUAL_APPROVAL"
-    },
-    {
-        "ID": "WD0105",
-        "SUBJECT": "EAM Audit review required for Pavan Jangam using FF_ID_BASIS on GRC_335",
-        "STATUS": "Decision pending",
-        "CREATEDON": "20241009",
+        "WIGROUP": "000000426228",
+        "OBJECTID": "",
+        "WORKITEMID": "426228",
+        "CREATEDON": "20260422",
         "DUEDATE": "",
         "CREATEDBY": "GRC_ADMIN",
-        "URL": "https://tgps4hdevapp.torrentgas.com:8240/sap/bc/webdynpro/sap/grac_ui_spm_audit_wf?APPLID=GRFN_INBOX&ENTITY_ID=FFLOG&MODE=E&OBJECT_ID=FFLOG%2f294822B0CAF31EDFA1BEE4CD4BBA949F&POWL_QUERY=294822B0CAF31EDFA0E6138BCABE1ECF&REQNO=&VARIANT=DEFAULT&WI_GROUP_OWNE=200142&WORKITEM_ID=000000437743&sap-client=335&sap-language=EN#",
-        "OBJECTID": "FFLOG%2f294822B0CAF31EDFA1BEE4CD4BBA949F",
-        "WORKITEMID": "000000437743",
+        "URL": "https://tgps4hdevapp.torrentgas.com:8240/sap/bc/webdynpro/sap/grac_ui_spm_audit_wf?APPLID=GRFN_INBOX&ENTITY_ID=FFLOG&MODE=E&OBJECT_ID=FFLOG%2f0AD0B3FBF09B1FD18FC74D8B1E55C000&POWL_QUERY=0AD0B3FBF09B1FD18FC577D3E77AA000&REQNO=&VARIANT=DEFAULT&WI_GROUP_OWNE=EAM_CONTRL&WORKITEM_ID=000000426228&sap-client=336&sap-language=EN#",
         "RISKLEVEL": "HIGH",
-        "EXPLANATION": "The log contains multiple user and role maintenance transactions (SU01, SU03, SU10, PFCG) which are sensitive and change-capable activities. These transactions indicate configuration and authorization changes requiring manual approval due to high risk. Other columns like Table Name are empty and ignored for risk evaluation.",
-        "APPROVAL_MODE": "MANUAL_APPROVAL"
+        "EXPLANATION": "The log contains risky transactions such as PFCG (Role Maintenance) and SU10 (User Mass Maintenance) which involve change-capable activities. These transactions require manual approval due to their potential impact on security and user roles. Several columns like Table Name and Activity had no populated values but this does not affect the risk evaluation since critical transactions are present.",
+        "APPROVAL_MODE": "MANUAL_APPROVAL",
+        "DATE_TIME": "23-04-2026 10:32:10"
+    },
+    {
+        "ID": "WD0104",
+        "SUBJECT": "EAM Audit review required for Pavan Jangam using FF_ID_BASIS1 on S4P_SU01",
+        "STATUS": "Decision pending",
+        "WIGROUP": "000000426237",
+        "OBJECTID": "",
+        "WORKITEMID": "426237",
+        "CREATEDON": "20260422",
+        "DUEDATE": "",
+        "CREATEDBY": "GRC_ADMIN",
+        "URL": "https://tgps4hdevapp.torrentgas.com:8240/sap/bc/webdynpro/sap/grac_ui_spm_audit_wf?APPLID=GRFN_INBOX&ENTITY_ID=FFLOG&MODE=E&OBJECT_ID=FFLOG%2f0AD0B3FBF09B1FD18FC74D8B1E574000&POWL_QUERY=0AD0B3FBF09B1FD18FC577D3E77AA000&REQNO=&VARIANT=DEFAULT&WI_GROUP_OWNE=EAM_CONTRL&WORKITEM_ID=000000426237&sap-client=336&sap-language=EN#",
+        "RISKLEVEL": "MEDIUM",
+        "EXPLANATION": "The log contains change-capable transactions such as SU01 (User Maintenance) and SCC1 (Client Copy), which are sensitive and potentially impactful. Although no direct table or command execution data is present, these transactions require manual approval due to their nature. Several columns like Table Name were empty and ignored during analysis.",
+        "APPROVAL_MODE": "MANUAL_APPROVAL",
+        "DATE_TIME": "23-04-2026 10:32:44"
+    },
+    {
+        "ID": "WD0111",
+        "SUBJECT": "EAM Audit review required for Pavan Jangam using FF_ID_BASIS2 on S4P_SU01",
+        "STATUS": "Decision pending",
+        "WIGROUP": "000000426238",
+        "OBJECTID": "",
+        "WORKITEMID": "426238",
+        "CREATEDON": "20260422",
+        "DUEDATE": "",
+        "CREATEDBY": "GRC_ADMIN",
+        "URL": "https://tgps4hdevapp.torrentgas.com:8240/sap/bc/webdynpro/sap/grac_ui_spm_audit_wf?APPLID=GRFN_INBOX&ENTITY_ID=FFLOG&MODE=E&OBJECT_ID=FFLOG%2f0AD0B3FBF09B1FD18FC74D8B1E586000&POWL_QUERY=0AD0B3FBF09B1FD18FC577D3E77AA000&REQNO=&VARIANT=DEFAULT&WI_GROUP_OWNE=EAM_CONTRL&WORKITEM_ID=000000426238&sap-client=336&sap-language=EN#",
+        "RISKLEVEL": "HIGH",
+        "EXPLANATION": "The log contains high-risk transactions such as PFCG (Role Maintenance) and SU01 (User Maintenance), which involve changes to roles and users. These are sensitive change-capable activities requiring manual approval. Although some columns like Table Name are empty, the presence of these risky transactions alone justifies a high risk and manual approval.",
+        "APPROVAL_MODE": "MANUAL_APPROVAL",
+        "DATE_TIME": "23-04-2026 10:33:18"
     }
 ]      
 
 # print(verify_data_from_sap("426161"))
 
 # for i in x:
-#     i.pop('ID')
-#     i.pop('APPROVAL_MODE')
-#     i['RISKLEVEL'] = "MEDIUM"
-#     i['EXPLANATION'] = "XYZ"
-#     i['OBJECTID'] = i['OBJECTID'].split('%2f')[1]
 #     print(send_data_to_sap(i))    
 
 

@@ -15,6 +15,9 @@ import pandas as pd
 import httpx
 from openai import AzureOpenAI
 import json
+from Manage_EdgeDriver import validate_version
+from zoneinfo import ZoneInfo
+from utils import decrypt_password
 
 load_dotenv()
 
@@ -166,33 +169,46 @@ def append_to_json_file(json_file_path, new_data):
 
 async def start(shared_data=None):
     
-    shared_data["status"].append(f"1). Start Process - {str(datetime.now())}")   
-
-    download_dir = os.path.join(os.getcwd(),os.getenv("DOWNLOAD_DIR"))    # folder path
-    os.makedirs(download_dir, exist_ok=True)
-
-    edge_options = Options()
-
-    prefs = {
-        "download.default_directory": download_dir,
-        "download.prompt_for_download": False,
-        "download.directory_upgrade": True,
-        "safebrowsing.enabled": True
-    }
-
-    edge_options.add_experimental_option("prefs", prefs)
-    edge_options.add_argument("--start-maximized")
-    edge_options.add_argument("--headless")
-    edge_options.add_argument("--disable-gpu")
-    edge_options.add_argument("--window-size=1920,1080")
-
-    service = Service(r"C:\Users\111439\Downloads\edgedriver_win64 (1)\msedgedriver.exe")
-
-    driver = webdriver.Edge(service=service, options=edge_options)
-
-    wait = WebDriverWait(driver, 20)
-
     try:
+    
+        shared_data["status"].append(f"1). Start Process - {str(datetime.now())}")   
+
+        download_dir = os.path.join(os.getcwd(),os.getenv("DOWNLOAD_DIR"))    # folder path
+        os.makedirs(download_dir, exist_ok=True)
+
+        edge_options = Options()
+
+        prefs = {
+            "download.default_directory": download_dir,
+            "download.prompt_for_download": False,
+            "download.directory_upgrade": True,
+            "safebrowsing.enabled": True
+        }
+
+        edge_options.add_experimental_option("prefs", prefs)
+        edge_options.add_argument("--start-maximized")
+        edge_options.add_argument("--headless")
+        edge_options.add_argument("--disable-gpu")
+        edge_options.add_argument("--window-size=1920,1080")
+
+        response = validate_version()
+
+        driver_path = None
+        shared_data["status"].append(">>> Validating Driver & Getting Path...")   
+
+        if response.get("success",False):
+            shared_data["status"].append(">>> Driver Validate Successfully.")   
+            driver_path = response.get("path",None)
+
+        else:
+            shared_data["status"].append(">>> Failed Driver Validation. Error:",response.get("error"))
+            return {"success":False,"error":response.get("error"),"data":shared_data}
+
+        service = Service(driver_path)
+
+        driver = webdriver.Edge(service=service, options=edge_options)
+
+        wait = WebDriverWait(driver, 20)
 
         driver.get(f"{os.getenv("GRFN_URL")}?sap-client={os.getenv("GRC_SAP_CLIENT")}&sap-user={os.getenv("GRC_SAP_USER")}&sap-language=EN#")
 
@@ -205,7 +221,7 @@ async def start(shared_data=None):
             EC.visibility_of_element_located((By.NAME, "sap-password"))
         )
         password_input.clear()
-        password_input.send_keys(os.getenv("GRC_SAP_PASS"))
+        password_input.send_keys(decrypt_password(os.getenv("GRC_SAP_PASS")).replace('"','').replace("'",""))
 
         driver.switch_to.active_element.send_keys(Keys.CONTROL, Keys.ENTER)
 
@@ -220,57 +236,57 @@ async def start(shared_data=None):
         
         shared_data["status"].append(">>> Agent Login Sucessfully")   
 
-        time.sleep(10)
+        # time.sleep(5)
 
-        shared_data["status"].append(">>> Apply Filter To Get 50 Records and IDs Of Work/Object ...") 
+        # shared_data["status"].append(">>> Apply Filter To Get Records and IDs Of Work/Object ...") 
 
-        setting_btn = driver.find_element(By.XPATH, "//div[@title='Open Settings']")
-        driver.execute_script("arguments[0].click();", setting_btn)
+        # setting_btn = driver.find_element(By.XPATH, "//div[@title='Open Settings']")
+        # driver.execute_script("arguments[0].click();", setting_btn)
 
-        time.sleep(2)
+        # time.sleep(2)
 
-        tabs = driver.find_elements(
-            By.XPATH, "//div[@class='lsTabStrip--item-title']"
-        )
+        # tabs = driver.find_elements(
+        #     By.XPATH, "//div[@class='lsTabStrip--item-title']"
+        # )
 
-        for tab in tabs:
-            if tab.text.strip() == "Column Selection":
-                tab_id = tab.get_attribute("id")
-                driver.find_element(By.ID, tab_id).click()
-                time.sleep(2)
-                driver.switch_to.active_element.send_keys(Keys.TAB)
-                time.sleep(1)
-                driver.switch_to.active_element.send_keys(Keys.SPACE)
-                time.sleep(1)
-                for i in range(0,10):
-                    driver.switch_to.active_element.send_keys(Keys.TAB)
-                time.sleep(1)
-                driver.switch_to.active_element.send_keys(Keys.SPACE)
-                time.sleep(2)
-                break
+        # for tab in tabs:
+        #     if tab.text.strip() == "Column Selection":
+        #         tab_id = tab.get_attribute("id")
+        #         driver.find_element(By.ID, tab_id).click()
+        #         time.sleep(2)
+        #         driver.switch_to.active_element.send_keys(Keys.TAB)
+        #         time.sleep(1)
+        #         driver.switch_to.active_element.send_keys(Keys.SPACE)
+        #         time.sleep(1)
+        #         for i in range(0,10):
+        #             driver.switch_to.active_element.send_keys(Keys.TAB)
+        #         time.sleep(1)
+        #         driver.switch_to.active_element.send_keys(Keys.SPACE)
+        #         time.sleep(2)
+        #         break
 
-        # Get all div elements with the given class
-        tabs = driver.find_elements(
-            By.XPATH, "//div[@class='lsTabStrip--item-title']"
-        )
+        # # Get all div elements with the given class
+        # tabs = driver.find_elements(
+        #     By.XPATH, "//div[@class='lsTabStrip--item-title']"
+        # )
 
-        for tab in tabs:    
-            if tab.text.strip() == "Display":
+        # for tab in tabs:    
+        #     if tab.text.strip() == "Display":
 
-                # Get the ID of the matched div
-                tab_id = tab.get_attribute("id")
+        #         # Get the ID of the matched div
+        #         tab_id = tab.get_attribute("id")
 
-                # Click using the ID
-                driver.find_element(By.ID, tab_id).click()
-                time.sleep(2)
-                driver.switch_to.active_element.send_keys(Keys.TAB)
-                time.sleep(1)
-                driver.switch_to.active_element.send_keys("50", Keys.TAB)
-                time.sleep(1)
-                break
+        #         # Click using the ID
+        #         driver.find_element(By.ID, tab_id).click()
+        #         time.sleep(2)
+        #         driver.switch_to.active_element.send_keys(Keys.TAB)
+        #         time.sleep(1)
+        #         driver.switch_to.active_element.send_keys("100", Keys.TAB)
+        #         time.sleep(1)
+        #         break
 
-        driver.switch_to.active_element.send_keys(Keys.CONTROL, Keys.ENTER)
-        time.sleep(10)
+        # driver.switch_to.active_element.send_keys(Keys.CONTROL, Keys.ENTER)
+        time.sleep(5)
 
         
         tbody = wait.until(
@@ -309,13 +325,13 @@ async def start(shared_data=None):
                     })
 
             table_data.append(row_data)
-        
+
         data = []
         for i in table_data:
             if len(i) == 32:
 
                 row_data = {}
-
+                # print(i)
                 if i[1]["span_id"] != "" and i[1]['text'] != "" and i[2]['text'] != "" and  i[3]['text'] != "" and i[6]['text'] != ""  and i[22]['text'] != "" and "EAM" in i[1]['text'][:5]:
                     row_data['ID'] = i[1]["span_id"].split("-")[0]
                     row_data['SUBJECT'] = i[1]['text']
@@ -331,7 +347,7 @@ async def start(shared_data=None):
                     row_data['CREATEDBY'] = i[5]['text']
 
                     res = verify_data_from_sap(row_data['WORKITEMID'])
-
+                    # print('✅',res)
                     if not res:
                         data.append(row_data)
 
@@ -362,36 +378,6 @@ async def start(shared_data=None):
             
             time.sleep(5)
             
-            setting_btn = driver.find_element(By.XPATH, "//div[@title='Open Settings']")
-            driver.execute_script("arguments[0].click();", setting_btn)
-
-            time.sleep(1)
-
-            hidden_btn = driver.find_element(By.XPATH, "//span[@title='Hidden Columns Available for Selection']")
-            driver.execute_script("arguments[0].click();", hidden_btn)
-
-            time.sleep(1)
-
-            driver.switch_to.active_element.send_keys(Keys.LEFT_SHIFT,Keys.TAB)
-            driver.switch_to.active_element.send_keys(Keys.SPACE)
-
-            time.sleep(2)
-
-            for i in range(0,10):
-                driver.switch_to.active_element.send_keys(Keys.TAB)
-
-            time.sleep(1)
-
-            driver.switch_to.active_element.send_keys(Keys.SPACE)
-
-            time.sleep(2)
-
-            driver.switch_to.active_element.send_keys(Keys.CONTROL, Keys.ENTER)
-
-            shared_data["status"].append(f"   - Filter Applied At Main Menu.")
-
-            time.sleep(10)
-
             export_div = driver.find_element(By.XPATH, "//div[@title='Export']")
             driver.execute_script("arguments[0].click();", export_div)
 
@@ -431,6 +417,10 @@ async def start(shared_data=None):
             row['RISKLEVEL'] = parsed_data.get('RISK_LEVEL','')
             row['EXPLANATION'] = parsed_data.get('Explanation','')
             row['APPROVAL_MODE'] = parsed_data.get('APPROVAL_MODE','')
+            
+            
+            ist_time = datetime.now(ZoneInfo("Asia/Kolkata"))
+            row['DATE_TIME'] = ist_time.strftime("%d-%m-%Y %H:%M:%S")
 
             append_to_json_file("logs.json", row) 
 
@@ -456,11 +446,12 @@ async def start(shared_data=None):
 
             shared_data["status"].append(f">>> {index+1}. {row['SUBJECT']} Proccesed.")
 
-
+        driver.close()
         return {"success":True}
 
     except Exception as e:
         import traceback
         print(traceback.print_exc())
+        shared_data["status"].append(f">>> Error: {str(e)}")
         return {"success":False,"error":str(e),"data":shared_data}
 
