@@ -10,6 +10,7 @@ import main
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from utils import encrypt_password,decrypt_password
+import service_restart
 
 load_dotenv()
 ENV_FILE = ".env"
@@ -23,6 +24,57 @@ process_ref = shared_data = manager =None
 
 scheduler= BackgroundScheduler()
 scheduler.start()
+
+def simple_recreate_bot():  
+
+    global scheduler
+
+    try:
+
+        job_id='eam_bot_schedule'
+        job = scheduler.get_job(job_id)
+        
+        if not job:
+            return {"status":False,"msg":"Job Not Found!"}
+
+        next_run_dt = job.next_run_time or (datetime.now(scheduler.timezone) + job.trigger.interval)
+        interval_td = job.trigger.interval
+
+        scheduler.remove_job(job_id)
+        scheduler.remove_all_jobs()
+
+        job = scheduler.add_job(
+            scheduled_bot_run,
+            'interval',
+            minutes=int(interval_td.total_seconds()//60),
+            id=job_id,
+            next_run_time=next_run_dt,
+            replace_existing=True
+        )
+
+        data = load_schedule_config()
+        
+        d1 = {
+            "run": False,
+            "Next run time": str(job.next_run_time.strftime('%Y-%m-%d %H:%M:%S'))
+        }
+
+        d2 = {
+            "interval_minutes": int(interval_td.total_seconds()//60),
+            "enable": True,
+            "last_updated_scheduler": str(datetime.now()),
+            "duration": str(data.get("duration","minutes")),
+            "Next run time": str(job.next_run_time.strftime('%Y-%m-%d %H:%M:%S'))
+        }
+
+        update_json_file("bot/bot_status.json",d1)
+        update_json_file("bot/scheduler.json",d2)
+    
+        return {"status":True}
+    
+    except Exception as e:
+        return {"status":False,"error":str(e)}
+
 
 def save_env(env_data):
     """Save dictionary back to .env file"""
@@ -147,7 +199,7 @@ def scheduled_bot_run():
         bot_data['run'] = False
         bot_data['end_bot_date_time'] = f"{datetime.now()}"
         
-        job = scheduler.get_job('bot_schedule')
+        job = scheduler.get_job('eam_bot_schedule')
         
         with open("bot/scheduler.json","r") as file:
             data = json.load(file)
@@ -201,7 +253,7 @@ def update_scheduler():
         scheduler.remove_all_jobs()
 
         if config.get('enable'):
-            job = scheduler.add_job(scheduled_bot_run, 'interval', minutes=int(config.get('interval_minutes', 5)), id='bot_schedule', replace_existing=True)
+            job = scheduler.add_job(scheduled_bot_run, 'interval', minutes=int(config.get('interval_minutes', 5)), id='eam_bot_schedule', replace_existing=True)
             return {'status':True,"next_run_time":job.next_run_time.strftime('%Y-%m-%d %H:%M:%S')}
         return {'status':True}
     
@@ -215,7 +267,6 @@ def default():  # start point
     scheduler.remove_all_jobs()
     stop_process()
     update_scheduler()
-
 
 
 # -------------------------------------------------------------
@@ -440,7 +491,7 @@ def start_bot():
         stop_process()
 
         if not data.get('enable'):
-            job = scheduler.add_job(scheduled_bot_run, trigger="date", id='bot_schedule', replace_existing=True)
+            job = scheduler.add_job(scheduled_bot_run, trigger="date", id='eam_bot_schedule', replace_existing=True)
             return {'status':True,"next_run_time":job.next_run_time.strftime('%Y-%m-%d %H:%M:%S')}
         
         return {'status':True}
@@ -448,10 +499,36 @@ def start_bot():
     except Exception as e:
         return {"success":False,"error":f"Error: {str(e)} Durring Bot Start."}
 
+@app.route("/skip",methods=["GET"])
+def skip_bot():
+    try:
+        
+        import time
+        time.sleep(5)
+        result = simple_recreate_bot()
+        stop_process()
+        
+        if result['status']:
+            return {"success":True,"msg":f"Bot Skip Successfully."}
+        
+        return {"success":False,"error":f"Somthing Went Wrong!"}
+    
+    except Exception as e:
+        return {"success":False,"error":f"Error: {str(e)} Durring Bot Stop."}
+
+@app.route("/restart-service",methods=["GET"])
+def restart_service():
+    try:
+
+        res = service_restart.main()        
+        return res
+
+    except Exception as e:
+        return {"success":False,"error":f"Error: {str(e)}"}
+
 # load dashbored page
 @app.route("/apple")
 def apple():
-        
     return render_template("index.html")
 
 # flask trigger point

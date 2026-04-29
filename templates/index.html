@@ -472,12 +472,11 @@
         <div class="mb-8">
             <!-- <h2 class="text-xl font-semibold mb-4 text-gray-700 px-1">Agent Logs (Real-time Feed)</h2> -->
 
-
-            <div class="flex items-center justify-between mb-4 px-1">
+            <div class=" flex items-center justify-between mb-4 px-1">
                 <h2 class="text-xl font-semibold text-gray-700">
                     Agent Logs (Real-time Feed)
                 </h2>
-                <a href="/user-logs" target="_blank" rel="noopener noreferrer"
+                <a class="hidden" href="/user-logs" target="_blank" rel="noopener noreferrer"
                     style="text-decoration: underline;font-weight: 700;color: #1e40af;">View</a>
             </div>
             <div
@@ -509,10 +508,10 @@
         <div class="border-t pt-6 border-gray-200 flex justify-end gap-10">
             <button id="reset-button"
                 class="btn-base bg-red-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 active:bg-gray-900 w-full">
-                Reset Factory
+                Reset
             </button>
             <button id="log-out-button"
-                class="btn-base bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 active:bg-gray-900 w-full">
+                class="hidden btn-base bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 active:bg-gray-900 w-full">
                 Log Out
             </button>
 

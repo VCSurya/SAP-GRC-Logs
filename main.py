@@ -18,6 +18,7 @@ import json
 from Manage_EdgeDriver import validate_version
 from zoneinfo import ZoneInfo
 from utils import decrypt_password
+import platform
 
 load_dotenv()
 
@@ -286,7 +287,7 @@ async def start(shared_data=None):
         #         break
 
         # driver.switch_to.active_element.send_keys(Keys.CONTROL, Keys.ENTER)
-        time.sleep(5)
+        time.sleep(10)
 
         
         tbody = wait.until(
@@ -418,20 +419,8 @@ async def start(shared_data=None):
             row['EXPLANATION'] = parsed_data.get('Explanation','')
             row['APPROVAL_MODE'] = parsed_data.get('APPROVAL_MODE','')
             
-            
             ist_time = datetime.now(ZoneInfo("Asia/Kolkata"))
             row['DATE_TIME'] = ist_time.strftime("%d-%m-%Y %H:%M:%S")
-
-            append_to_json_file("logs.json", row) 
-
-            if os.path.exists(excel_file):
-                os.remove(excel_file)
-                shared_data["status"].append(f"   - Excel File deleted successfully.")
-
-            else:
-                shared_data["status"].append(f"   - Excel File not found.")
-
-            time.sleep(2)
 
             result = send_data_to_sap(row)
 
@@ -439,6 +428,18 @@ async def start(shared_data=None):
                 shared_data["status"].append(f"   ✅ Data Saved Into SAP.")
             else:
                 shared_data["status"].append(f"   🚨 Data Not Saved Into SAP. Error:{result.get('error')}")
+            
+            system = platform.system()
+
+            if system == "Windows":
+                append_to_json_file("logs.json", row)
+
+            if os.path.exists(excel_file):
+                os.remove(excel_file)
+                shared_data["status"].append(f"   - Excel File deleted successfully.")
+
+            else:
+                shared_data["status"].append(f"   - Excel File not found.")
 
             driver.close()
             time.sleep(2)
@@ -455,3 +456,10 @@ async def start(shared_data=None):
         shared_data["status"].append(f">>> Error: {str(e)}")
         return {"success":False,"error":str(e),"data":shared_data}
 
+    finally:
+        try:
+            driver.close()
+            driver.switch_to.window(main_window)
+            driver.close()
+        except:
+            pass
